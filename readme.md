@@ -61,7 +61,7 @@ This software uses the following [python](https://www.python.org/) packages:
 - [SciPy](https://scipy.org/)
 
 # Related
-- [3DGeo Research Group, Heidelberg University](https://github.com/3dgeo-heidelberg) - Focused on the developemnt of methods for the geographic analysis of 3D/4D point clouds.
+- [3DGeo Research Group, Heidelberg University](https://github.com/3dgeo-heidelberg) - Focused on the development of methods for the geographic analysis of 3D/4D point clouds.
 
 # License
 !!!ADD LICENSE
