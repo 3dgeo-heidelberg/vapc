@@ -1,0 +1,16 @@
+{
+    "infiles":["../test_data/vasp_in.laz"],
+    "outfile":"../test_data/vasp_out.laz",
+    "voxel_size":1.0,
+    "origin":[0,0,0],
+    
+    "attributes":{
+        "intensity":"mean"
+        },
+        
+    "calculate":[   
+        "point_count",
+        "big_int_index"
+        ],
+    "return_at":"center_of_gravity"
+    }
