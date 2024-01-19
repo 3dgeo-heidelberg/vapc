@@ -47,10 +47,12 @@ $ cd vasp
 # Install dependencies
 $ conda env create -f vasp.yml
 ```
-Exemplary workflows can be found in [jupyter](./jupyter)
+Using vasp from the command line with a configure file is explained in the [how-to](how_to.md). This also includes a more detailed how-to. <br>
+Exemplary notebook workflows can be found in [jupyter](./jupyter).
 
 # Download
-Test data can be downloaded from [!!!ADD LINK](!!!link_here)
+A small test dataset is currently located in [test_data](./test_data).
+At an other point in time, test data can be downloaded from [!!!ADD LINK](!!!link_here)
 
 # Credits
 This software uses the following [python](https://www.python.org/) packages:
