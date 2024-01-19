@@ -9,28 +9,30 @@
 </p>
 
 # Structure
-Vasp is structured in two parts. The data handler and the vasp computation part.
+Vasp is divided into two parts. The data handler and the vasp computation part.
 ## The data handler
-is an addition for easy reading and saving of data. It always read a list of point clouds and saves them as a single dataframe. Whenever calling save from the data handler, the dataframe currently stored in it will be saved. So here the workflow would be:
-* Initiate data handler
+is an addition for easy reading and saving of data. It always reads a list of point clouds and saves them as a single dataframe. This enables the merging of multiple datasets. Whenever save is called from the data handler, the dataframe currently stored in it is saved. So here the workflow would be:
+* Initiate the data handler
 * Load data with data handler
 * Give dataframe to vasp
 * Return dataframe after computations back to data handler
 * Call save from data handler  
 
-Required parameters for the data handling can be set like this:
+Required parameters for the data handler are set like this:
 
 ```json
 "infiles":["v2_vasp/test_data/vasp_in.laz"],
-"outfile":"v2_vasp/test_data/vasp_out.laz",
-"voxel_size":1.0,
-"origin":[0,0,0]
+"outfile":"v2_vasp/test_data/vasp_out.laz"
 ```
 
 
-## vasp...
-is used to compute statistics of existing attributes and compute new attribute. This takes place in a voxel space where the voxel size ("voxel_size") and the origin of the voxel space have to be defined ("origin"). 
+## VASP...
+is used to compute statistics of existing attributes and compute new attribute. This takes place in a voxel space where the voxel size ("voxel_size") and the origin of the voxel space have to be defined ("origin").
 
+```json
+"voxel_size":1.0,
+"origin":[0,0,0]
+```
 ### For the computation of statistics for existing attributes
 the following methods are currently implemented:
 * min
@@ -38,9 +40,9 @@ the following methods are currently implemented:
 * median
 * max
 * sum
-* modus
+* modus*
 
-Where the respective value within each voxel will be computed for any attribute. If the mean intensity should be calculated, one can require to do so by writing the following into the config file:
+Where the respective value within each voxel will be computed for any attribute. If the mean intensity should be calculated, this can be requested by writing the following into the config file:
 ```json
 "attributes":{
     "intensity":"mean"
@@ -54,10 +56,10 @@ Similar the mean intensity and the mode for the hitObjectId (e.g. for VLS data) 
     "hitObjectId":"mode"
     }
 ```
-Warning: mode is currently only implemented with a significantly slower method.
+*Warning: mode is currently only implemented with a significantly slower method. This is an open issue and will be fixed.
 
 
-### For the computatino of new attributes
+### For the computation of new attributes
 the following options exist:
 
 #### Indices:
@@ -78,7 +80,8 @@ the following options exist:
   * eigenvalues
   * geometric_features
   
-To compute new attributes one could define a list similar to this for the config file:
+
+The computation of additional/new attributes can be requested in the config file like this:
 
 ```json
 "calculate":[   
@@ -103,7 +106,7 @@ This can be set like this:
 ## Full example of a config file
 Lets define a scenario:
 
-We want to use vasp to compute the mean intensity of my input point cloud. The voxel size should be 1 m. Additionally we want to compute the point count and the big int index. The result of each voxel shall be stored in a point cloud where each point is located at the center of gravity of its corresponding voxel. Here the config file would look something like this:
+We want to use VASP to compute the mean intensity of an input point cloud. The voxel size should be 1 m. Additionally we want to compute the point count and the big int index. The result of each voxel shall be stored in a point cloud where each point is located at the center of gravity of its corresponding voxel. Here the config file would look something like this:
 
 ```json
 {
@@ -134,7 +137,7 @@ cd demo
 python main.py config.py
 ```
 
-## How to filter?
+## How to filter*
 A common use case might be connected to filtering the result by a minimum number of points per voxel. A filter can also be defined in the following way:
 
 ```json 
@@ -146,7 +149,7 @@ attr_filter = {
 
 As we can see we have to define the operator (min, min_eq, max, max_eq,eq), the filter value and the filter attribute.
 
-!!! This method is not yet implemented in an automated workflow but can be called in a script by:
+*This method is not yet implemented in an automated workflow but can be called in a script by:
 
 ```python
 vasp.filter_attributes(
@@ -156,10 +159,10 @@ vasp.filter_attributes(
     )
 ```
 
-## How to mesh
+## How to mesh*
 Visualisations might require to generate a mesh of a voxelized point cloud. The data handler currently has a method implemented, that stores the point cloud as a voxel mesh in .ply format (readable with Bender). The option shift to center is usefull for loading data into Blender, as it does not shift by default. True coordinates are lost by this.
 
-!!! This method is not yet implemented in an automated workflow but can be called in a script by:
+*This method is not yet implemented in an automated workflow but can be called in a script by:
 
 ```python
 data_handler.save_as_ply(
