@@ -40,7 +40,7 @@ the following methods are currently implemented:
 * median
 * max
 * sum
-* modus*
+* mode*
 
 Where the respective value within each voxel will be computed for any attribute. If the mean intensity should be calculated, this can be requested by writing the following into the config file:
 ```json
