@@ -4,6 +4,8 @@ import math
 from scipy import stats
 import pandas as pd
 from utilities import trace,timeit
+from data_handler import DATA_HANDLER
+from itertools import combinations
 
 class VASP:
     def __init__(self,
@@ -82,6 +84,7 @@ class VASP:
         if "eigenvalues" in self.compute:         self.compute_eigenvalues()
         if "geometric_features" in self.compute:  self.compute_geometric_features()
         if "center_of_gravity" in self.compute:   self.compute_center_of_gravity()
+        if "std_of_cog" in self.compute:          self.compute_std_of_cog()
         if "center_of_voxel" in self.compute:     self.compute_center_of_voxel()
         if "corner_of_voxel" in self.compute:     self.compute_corner_of_voxel()
 
@@ -186,9 +189,78 @@ class VASP:
         if self.voxelized is False:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        self.df["big_int_index"] = (self.df["voxel_x"].astype(str)+ self.df["voxel_y"].astype(str)+ self.df["voxel_z"].astype(str))
+        self.df["big_int_index"] = (self.df["voxel_x"].astype(str)+"_"+ self.df["voxel_y"].astype(str)+"_"+ self.df["voxel_z"].astype(str))
         self.big_int_index = True
     
+    @trace
+    def mask_by_voxels(self,
+                     mask_file,
+                     ):
+        if self.big_int_index is False:
+            self.compute_big_int_index()
+            self.drop_columns += ["big_int_index"]
+        #Load mask file
+        dh = DATA_HANDLER([mask_file],
+                        attributes={})
+        dh.load_las_files()
+        vasp_mask = VASP(self.voxel_size,
+                        self.origin,
+                        {})
+        vasp_mask.get_data_from_data_handler(dh)
+        vasp_mask.voxelize()
+        vasp_mask.compute_big_int_index()
+        mask_indices = np.unique(vasp_mask.df["big_int_index"])
+        #Overwrite data
+        self.df = self.df[self.df["big_int_index"].isin(mask_indices)]
+
+    @trace
+    def mask_by_surrounding_voxels(self,
+                     mask_file):
+        def _surrounding_coordinates_array(coords):
+            result = [[],[],[]]
+            for coord in coords:
+                # print(coord)
+                # coord is expected to be a NumPy array of shape (3,)
+                offsets = np.array([-1, 0, 1])
+                all_combinations = np.array(np.meshgrid(offsets, offsets, offsets)).T.reshape(-1,3)
+                surrounding = coord + all_combinations
+                # print(surrounding)
+                # print(surrounding.T[0])
+                result[0]+=list(surrounding.T[1])
+                # print(result)
+                result[1]+=list(surrounding.T[2])
+                result[2]+=list(surrounding.T[0])
+                # break
+                # Remove the (0, 0, 0) offset to exclude the original point itself
+                # result.append(surrounding)
+            return np.array(result).T
+        
+        if self.big_int_index is False:
+            self.compute_big_int_index()
+            self.drop_columns += ["big_int_index"]
+        #Load mask file
+        dh = DATA_HANDLER([mask_file],
+                        attributes={})
+        dh.load_las_files()
+        vasp_mask = VASP(self.voxel_size,
+                        self.origin,
+                        {})
+        vasp_mask.get_data_from_data_handler(dh)
+        vasp_mask.voxelize()
+        vasp_mask.compute_big_int_index()
+        mask_indices = np.unique(vasp_mask.df[["voxel_x", "voxel_y", "voxel_z"]],axis = 1)
+        indices_buffered = _surrounding_coordinates_array(mask_indices)
+        df_mask = pd.DataFrame(np.array(indices_buffered), columns = ["voxel_x", "voxel_y", "voxel_z"])
+        # print(self.df)
+        # print(df_mask)
+        df_mask["big_int_index"] = (df_mask["voxel_x"].astype(str)+"_"+ df_mask["voxel_y"].astype(str)+"_"+ df_mask["voxel_z"].astype(str))
+        # print(df_mask)
+        mask_indices = np.unique(df_mask["big_int_index"])
+        # print(mask_indices)
+        
+        # #Overwrite data
+        self.df = self.df[self.df["big_int_index"].isin(mask_indices)]
+
     @trace
     @timeit
     def compute_hash_index(self,
@@ -262,6 +334,21 @@ class VASP:
         grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"])
         self.voxel_cog = grouped[["X", "Y", "Z"]].mean().reset_index()
         self.voxel_cog.rename(columns={"X": "cog_x", "Y": "cog_y", "Z": "cog_z"}, inplace=True)
+        self.df = self.df.merge(self.voxel_cog, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
+        self.center_of_gravity = True
+
+    @trace
+    @timeit
+    def compute_std_of_cog(self):
+        """
+        Computes the center of gravity for all occupied voxels.
+        """
+        if self.voxelized is False:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+        grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"])
+        self.voxel_cog = grouped[["X", "Y", "Z"]].std().reset_index()
+        self.voxel_cog.rename(columns={"X": "std_x", "Y": "std_y", "Z": "std_z"}, inplace=True)
         self.df = self.df.merge(self.voxel_cog, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
         self.center_of_gravity = True
 
@@ -432,11 +519,11 @@ class VASP:
         elif min_max_eq == "min":
             self.df = self.df[self.df[filter_attribute]>filter_value]
         elif min_max_eq == "min_eq":
-            self.df = self.df[filter_attribute>=filter_value]
+            self.df = self.df[self.df[filter_attribute]>=filter_value]
         elif min_max_eq == "max":
-            self.df = self.df[filter_attribute>filter_value]
+            self.df = self.df[self.df[filter_attribute]<filter_value]
         elif min_max_eq == "max_eq":
-            self.df = self.df[filter_attribute>=filter_value]
+            self.df = self.df[self.df[filter_attribute]<=filter_value]
         else:
             print("Filter invalid, use eq, min, min_eq, max, and max_eq only.")
 
