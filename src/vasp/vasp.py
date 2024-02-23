@@ -50,7 +50,9 @@ class VASP:
         self.drop_columns = []
         self.new_column_names = {}
         self.reduced = False
-
+        self.reduction_point = False
+        self.offset_applied = False
+        
     @trace
     @timeit
     def get_data_from_data_handler(self,data_handler):
@@ -58,7 +60,27 @@ class VASP:
         Gets dataframe from the data handler.
         """
         self.df = data_handler.df
+        
+    @trace
+    @timeit
+    def compute_reduction_point(self):
+        self.reduction_point = [int(self.df["X"].min()),int(self.df["Y"].min()),int(self.df["Z"].min())]
 
+    @trace
+    @timeit
+    def compute_offset(self):
+        if self.offset_applied:
+            self.df["X"] += self.reduction_point[0]
+            self.df["Y"] += self.reduction_point[1]
+            self.df["Z"] += self.reduction_point[2]
+            self.offset_applied = False
+        else:
+            self.df["X"] -= self.reduction_point[0]
+            self.df["Y"] -= self.reduction_point[1]
+            self.df["Z"] -= self.reduction_point[2]
+            self.offset_applied = True
+        
+        
     @trace
     @timeit
     def voxelize(self):
@@ -182,17 +204,36 @@ class VASP:
 
     @trace
     @timeit
-    def compute_big_int_index(self):
+    def compute_big_int_index_old(self):
         """
         Computes a big int index for all occupied voxels (as a str).
         """
         if self.voxelized is False:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        self.df["big_int_index"] = (self.df["voxel_x"].astype(str)+"_"+ self.df["voxel_y"].astype(str)+"_"+ self.df["voxel_z"].astype(str))
+        
+        self.df.loc[:,"big_int_index"] = (self.df.loc[:, 'voxel_x'].astype(str)+ self.df.loc[:, 'voxel_y'].astype(str)+self.df.loc[:, 'voxel_z'].astype(str)).astype(int)
         self.big_int_index = True
-    
+       
     @trace
+    @timeit
+    def compute_big_int_index(self,
+                            n = 1000000000):
+        """
+        Computes a big int index for all occupied voxels (as a int).
+        Do not set n > 1000000000, errors will occur.
+        """
+        if self.voxelized is False:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+        
+        self.df.loc[:,"big_int_index"] = self.df.loc[:, 'voxel_x']*n**2+ self.df.loc[:, 'voxel_y']*n+self.df.loc[:, 'voxel_z']
+        self.big_int_index = True
+       
+
+   
+    @trace
+    @timeit
     def mask_by_voxels(self,
                      mask_file,
                      ):
@@ -208,58 +249,108 @@ class VASP:
                         {})
         vasp_mask.get_data_from_data_handler(dh)
         vasp_mask.voxelize()
+        self.compute_hash_index()
+        #mask_indices = np.unique(vasp_mask.df[["voxel_x", "voxel_y", "voxel_z"]],axis = 1)
+        mask_indices = np.unique(vasp_mask.df["hash_index"])
+        vasp_mask.df = vasp_mask.df[self.df["hash_index"].isin(mask_indices)]
+        #vasp_mask.df[["voxel_x", "voxel_y", "voxel_z"]] = mask_indices
         vasp_mask.compute_big_int_index()
-        mask_indices = np.unique(vasp_mask.df["big_int_index"])
-        #Overwrite data
-        self.df = self.df[self.df["big_int_index"].isin(mask_indices)]
+        vasp_mask.compute_hash_index()
+        hash_indices = np.unique(vasp_mask.df["hash_index"])
+        print(hash_indices)
+        #mask by hash index
+        print(self.df)
+        print("before filtering:",self.df.shape)
+        self.df = self.df[self.df["hash_index"].isin(hash_indices)]
+        print("after hash filtering:",self.df.shape)
+        #remove wrong values by big int index
+        big_int_indices = np.unique(vasp_mask.df["big_int_index"])
+        self.compute_big_int_index()
+        self.df = self.df[self.df["big_int_index"].isin(big_int_indices)]
+        print("after big int filtering:",self.df.shape)
+        self.df = self.df.drop(["voxel_x", "voxel_y", "voxel_z","big_int_index","hash_index"],axis = 1)
 
     @trace
-    def mask_by_surrounding_voxels(self,
-                     mask_file):
-        def _surrounding_coordinates_array(coords):
-            result = [[],[],[]]
-            for coord in coords:
-                # print(coord)
-                # coord is expected to be a NumPy array of shape (3,)
-                offsets = np.array([-1, 0, 1])
-                all_combinations = np.array(np.meshgrid(offsets, offsets, offsets)).T.reshape(-1,3)
-                surrounding = coord + all_combinations
-                # print(surrounding)
-                # print(surrounding.T[0])
-                result[0]+=list(surrounding.T[1])
-                # print(result)
-                result[1]+=list(surrounding.T[2])
-                result[2]+=list(surrounding.T[0])
-                # break
-                # Remove the (0, 0, 0) offset to exclude the original point itself
-                # result.append(surrounding)
-            return np.array(result).T
+    @timeit
+    def compute_voxel_buffer(self, buffer_size:int = 1):
+        if self.voxelized is False:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+            
+        coords = np.array((self.df["voxel_x"],self.df["voxel_y"],self.df["voxel_z"])).T
+        offsets = np.arange(-buffer_size, buffer_size + 1)
+        all_combinations = np.array(np.meshgrid(offsets, offsets, offsets)).T.reshape(-1, 3)
+        expanded_coords = coords[:, np.newaxis, :] + all_combinations
+        result = expanded_coords.reshape(-1, 3)
+        self.df = pd.DataFrame(np.array(result), columns = ["voxel_x", "voxel_y", "voxel_z"])
+
+
+    @trace
+    @timeit
+    def select_by_mask_old(self,
+                     vasp_mask):
+        if self.voxelized is False:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+        if self.hash_index is False:
+            self.compute_hash_index()
+            self.drop_columns += ["hash_index"]
+        if vasp_mask.voxelized is False:
+            vasp_mask.voxelize()
+            
+        vasp_mask.compute_hash_index()
+        #mask by hash index
+        print("Points before filtering:",self.df.shape)
+        self.df = self.df[self.df["hash_index"].isin(vasp_mask.df["hash_index"])]
+        print("Points after filtering:",self.df.shape)
+        self.df = self.df.drop(["voxel_x", "voxel_y", "voxel_z","hash_index"],axis = 1)
         
-        if self.big_int_index is False:
-            self.compute_big_int_index()
-            self.drop_columns += ["big_int_index"]
-        #Load mask file
-        dh = DATA_HANDLER([mask_file],
-                        attributes={})
-        dh.load_las_files()
-        vasp_mask = VASP(self.voxel_size,
-                        self.origin,
-                        {})
-        vasp_mask.get_data_from_data_handler(dh)
-        vasp_mask.voxelize()
+    @trace
+    @timeit
+    def select_by_mask(self,
+                     vasp_mask,
+                     mask_attribute = "big_int_index"):
+        if self.voxelized is False:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+            self.drop_columns += ["hash_index"]
+        if vasp_mask.voxelized is False:
+            vasp_mask.voxelize()
+        if mask_attribute not in self.df.columns:
+            self.compute = [mask_attribute]
+            self.compute_requested_attributes()
+        if mask_attribute not in vasp_mask.df.columns:
+            vasp_mask.compute = [mask_attribute]
+            vasp_mask.compute_requested_attributes()
+       
+        #mask by attribute
+        print("Points before filtering:",self.df.shape)
+        self.df = self.df[self.df[mask_attribute].isin(vasp_mask.df[mask_attribute])]
+        print("Points after filtering:",self.df.shape)
+        self.df = self.df.drop(["voxel_x", "voxel_y", "voxel_z",mask_attribute],axis = 1)
+
+    @trace
+    @timeit
+    def select_by_mask_old2(self,
+                     vasp_mask,
+                     mask_attribute = "big_int_index"):
+        if self.voxelized is False:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+            self.drop_columns += ["hash_index"]
+        if vasp_mask.voxelized is False:
+            vasp_mask.voxelize()
+        print(self.df)
+        self.compute_big_int_index()
+        print(vasp_mask.df)
         vasp_mask.compute_big_int_index()
-        mask_indices = np.unique(vasp_mask.df[["voxel_x", "voxel_y", "voxel_z"]],axis = 1)
-        indices_buffered = _surrounding_coordinates_array(mask_indices)
-        df_mask = pd.DataFrame(np.array(indices_buffered), columns = ["voxel_x", "voxel_y", "voxel_z"])
-        # print(self.df)
-        # print(df_mask)
-        df_mask["big_int_index"] = (df_mask["voxel_x"].astype(str)+"_"+ df_mask["voxel_y"].astype(str)+"_"+ df_mask["voxel_z"].astype(str))
-        # print(df_mask)
-        mask_indices = np.unique(df_mask["big_int_index"])
-        # print(mask_indices)
+        #mask by attribute
+        print("Points before filtering:",self.df.shape)
+        self.df = self.df[self.df[mask_attribute].isin(vasp_mask.df[mask_attribute])]
+        print("Points after filtering:",self.df.shape)
+        self.df = self.df.drop(["voxel_x", "voxel_y", "voxel_z","big_int_index"],axis = 1)
+
         
-        # #Overwrite data
-        self.df = self.df[self.df["big_int_index"].isin(mask_indices)]
 
     @trace
     @timeit
@@ -274,7 +365,7 @@ class VASP:
         if self.voxelized is False:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        self.df["hash_index"] = (self.df["voxel_x"] * p1 ^ self.df["voxel_y"] * p2 ^ self.df["voxel_z"] * p3) % n
+        self.df["hash_index"] = ((self.df["voxel_x"] * p1) ^ (self.df["voxel_y"] * p2) ^ (self.df["voxel_z"] * p3)) % n
         self.hash_index = True
 
     @trace
