@@ -69,6 +69,8 @@ class VASP:
     @trace
     @timeit
     def compute_offset(self):
+        if self.reduction_point is False:
+            self.compute_reduction_point()
         if self.offset_applied:
             self.df["X"] += self.reduction_point[0]
             self.df["Y"] += self.reduction_point[1]
@@ -509,7 +511,7 @@ class VASP:
             self.drop_columns += ["cov_xx", "cov_xy", "cov_xz", "cov_yx", "cov_yy", "cov_yz", "cov_zx", "cov_zy", "cov_zz"]
         grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"])
         eig_df = grouped.apply(_eigenvalues)
-        col_names = ["Eigenvalue 1", "Eigenvalue 2","Eigenvalue 3"]
+        col_names = ["Eigenvalue_1", "Eigenvalue_2","Eigenvalue_3"]
         eigenvalue_df = pd.DataFrame(eig_df.tolist(), index=eig_df.index, columns=col_names).reset_index()
         self.df = self.df.merge(eigenvalue_df, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
         self.eigenvalues = True
@@ -522,18 +524,18 @@ class VASP:
         """
         if self.eigenvalues is False:
             self.compute_eigenvalues()
-            self.drop_columns += ["Eigenvalue 1", "Eigenvalue 2","Eigenvalue 3"]
-        self.df["Sum of Eigenvalues"] = self.df["Eigenvalue 1"]+self.df["Eigenvalue 2"]+self.df["Eigenvalue 3"]
-        self.df["Omnivariance"] = (self.df["Eigenvalue 1"]*self.df["Eigenvalue 2"]*self.df["Eigenvalue 3"])**(1/3)
+            self.drop_columns += ["Eigenvalue_1", "Eigenvalue_2","Eigenvalue_3"]
+        self.df["Sum_of_Eigenvalues"] = self.df["Eigenvalue_1"]+self.df["Eigenvalue_2"]+self.df["Eigenvalue_3"]
+        self.df["Omnivariance"] = (self.df["Eigenvalue_1"]*self.df["Eigenvalue_2"]*self.df["Eigenvalue_3"])**(1/3)
         try:
-            self.df["Eigentropy"] = -1*(self.df["Eigenvalue 1"]*math.log(self.df["Eigenvalue 1"])+self.df["Eigenvalue 2"]*math.log(self.df["Eigenvalue 2"])+self.df["Eigenvalue 3"]*math.log(self.df["Eigenvalue 3"]))
+            self.df["Eigentropy"] = -1*(self.df["Eigenvalue_1"]*math.log(self.df["Eigenvalue_1"])+self.df["Eigenvalue_2"]*math.log(self.df["Eigenvalue_2"])+self.df["Eigenvalue_3"]*math.log(self.df["Eigenvalue_3"]))
         except:
             self.df["Eigentropy"] = np.nan
-        self.df["Anisotropy"] = (self.df["Eigenvalue 1"]-self.df["Eigenvalue 3"])/self.df["Eigenvalue 1"]
-        self.df["Planarity"] = (self.df["Eigenvalue 2"]-self.df["Eigenvalue 3"])/self.df["Eigenvalue 1"]
-        self.df["Linearity"] = (self.df["Eigenvalue 1"]-self.df["Eigenvalue 2"])/self.df["Eigenvalue 1"]
-        self.df["Surface Variation"] = self.df["Eigenvalue 3"]/self.df["Sum of Eigenvalues"]
-        self.df["Sphericity"] = self.df["Eigenvalue 3"]/self.df["Eigenvalue 1"]
+        self.df["Anisotropy"] = (self.df["Eigenvalue_1"]-self.df["Eigenvalue_3"])/self.df["Eigenvalue_1"]
+        self.df["Planarity"] = (self.df["Eigenvalue_2"]-self.df["Eigenvalue_3"])/self.df["Eigenvalue_1"]
+        self.df["Linearity"] = (self.df["Eigenvalue_1"]-self.df["Eigenvalue_2"])/self.df["Eigenvalue_1"]
+        self.df["Surface_Variation"] = self.df["Eigenvalue_3"]/self.df["Sum_of_Eigenvalues"]
+        self.df["Sphericity"] = self.df["Eigenvalue_3"]/self.df["Eigenvalue_1"]
         self.geometric_features = True
 
     @trace

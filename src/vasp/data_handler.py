@@ -224,7 +224,14 @@ class DATA_HANDLER:
         - shift_to_center (bool): Shift data to origin. Usefull for visualisations in Blender to avoid shifting data.
         """
         self.voxel_size = voxel_size
-        verts, faces, vert_colors = self._generate_mesh_data()
+        self.scalars = self.df.columns
+        self.scalars = self.scalars.drop(["X","Y","Z"])
+        try:
+            self.scalars = self.scalars.drop(["red","green","blue"])
+        except:
+            pass
+
+        verts, faces, vert_colors, attributes = self._generate_mesh_data()
 
         with open(outfile, 'w') as file:
             # Schreiben des Headers
@@ -237,6 +244,8 @@ class DATA_HANDLER:
             file.write("property uchar red\n")  # Add red color
             file.write("property uchar green\n")  # Add green color
             file.write("property uchar blue\n")  # Add blue color
+            for attribute in self.scalars:
+                file.write("property float %s\n"%attribute)  # Add blue color
             file.write(f"element face {len(faces)}\n")
             file.write("property list uchar int vertex_indices\n")
             file.write("end_header\n")
@@ -249,12 +258,15 @@ class DATA_HANDLER:
             else:
                 min_x,min_y,min_z = 0 + center_offset, 0 + center_offset, 0 + center_offset
 
-            for vert,color in zip(verts, vert_colors):
-                file.write(f"{np.real(vert[0]-min_x)} {np.real(vert[1]-min_y)} {np.real(vert[2]-min_z)} {int(color[0])} {int(color[1])} {int(color[2])} \n")
+            for vert,color, attrs in zip(verts, vert_colors,attributes):
+                file.write(f"{np.real(vert[0]-min_x)} {np.real(vert[1]-min_y)} {np.real(vert[2]-min_z)} {int(color[0])} {int(color[1])} {int(color[2])}")
+                for attr in attrs:
+                    file.write(" %s \n"%attr)
             
             for face in faces:
                 file.write(f"4 {face[0]} {face[1]} {face[2]} {face[3]}\n")
 
+        
     def _addDimensionToLaz(self,
                            array,
                            name):
@@ -278,26 +290,26 @@ class DATA_HANDLER:
         vertices = []
         faces = []
         vertex_colors = []
+        attributes = []
         voxel_to_vertex_indices = {}
         vertices_dict = {}
-
         # Iterating over voxels
-        for voxel in self.df.itertuples():
+        for index, voxel in self.df.iterrows():
             voxel_index = (voxel.X, voxel.Y, voxel.Z)
-
-
             # Calculate voxel corners
             corners = self._calculate_voxel_corners(voxel_index)
             corner_indices = []
-
             for corner in corners:
                 if corner not in vertices_dict:
                     vertices_dict[corner] = len(vertices_dict)
                     vertices.append(corner)
                     # Handle vertex color
                     color = [voxel.red // 256, voxel.green // 256, voxel.blue // 256] if hasattr(self.df, "red") else [216,179,101]
+                    attrs = []
+                    for attribute in self.scalars:
+                        attrs.append(voxel[attribute])
                     vertex_colors.append(color)
-
+                    attributes.append(attrs)
                 corner_indices.append(vertices_dict[corner])
 
             voxel_to_vertex_indices[voxel_index] = corner_indices
@@ -313,7 +325,7 @@ class DATA_HANDLER:
             ]
             faces.extend([[corner_indices[i] for i in face] for face in face_indices])
 
-        return vertices, faces, vertex_colors
+        return vertices, faces, vertex_colors, attributes
 
     def _calculate_voxel_corners(self, voxel_index):
         x, y, z = voxel_index
