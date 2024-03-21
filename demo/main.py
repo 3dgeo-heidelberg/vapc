@@ -35,8 +35,7 @@ def main(config_file):
         )
 
     vasp.compute_requested_attributes()
-    if "mode" in config["attributes"].values():
-        print("!!! WARNING: Using slower version as 'mode' is requested !!!")
+    if "mode" in config["attributes"].values() or "mode_count" in str(config["attributes"].values()):
         vasp.compute_requested_statistics_per_attributes_numpy()
     else:
         vasp.compute_requested_statistics_per_attributes() 
