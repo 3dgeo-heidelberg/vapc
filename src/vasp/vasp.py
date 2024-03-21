@@ -3,9 +3,13 @@ import numpy as np
 import math
 from scipy import stats
 import pandas as pd
+import pandasql as ps
 from utilities import trace,timeit
 from data_handler import DATA_HANDLER
 from itertools import combinations
+import time
+import sys
+
 
 class VASP:
     def __init__(self,
@@ -91,6 +95,8 @@ class VASP:
         """
         for i,dim in enumerate(["X", "Y", "Z"]):
             self.df[f"voxel_{dim.lower()}"] = np.floor((self.df[dim] - self.origin[i]) / self.voxel_size).astype(int)
+
+        #self.df["voxel_id"] = self.df.iloc[:, -3:].astype(str).apply('_'.join, axis=1)
         self.voxelized = True
 
     @trace
@@ -155,7 +161,7 @@ class VASP:
         data = np.array([tuple(row) for row in df_temp_subset.values], dtype=dtypes)
         sorted_indices = np.lexsort((data["voxel_z"], data["voxel_y"], data["voxel_x"]))
         sorted_data = data[sorted_indices]
-        groups, indices = np.unique(sorted_data[["voxel_x", "voxel_y", "voxel_z"]], return_index=True, axis=0)
+        groups, indices = np.unique(sorted_data[["voxel_x", "voxel_y", "voxel_z"]], return_index=True)#, axis=0)
         all_aggregated_data = {}
         all_aggregated_datalist = []
         final_dtype = [
@@ -166,10 +172,26 @@ class VASP:
         
         self.new_column_names = {}
         local_names = []
+        print(f"Computing attributes...")
         for attr in self.attributes.keys():
-            if self.attributes[attr] == "mode":
-                aggregated_data = [stats.mode(sorted_data[attr][indices[i]:indices[i + 1]])[0] for i in range(len(indices) - 1)]
-                aggregated_data.append(stats.mode(sorted_data[attr][indices[-1]:])[0])
+            if "mode_count" in self.attributes[attr]:
+                percentage = float(self.attributes[attr].split(",")[-1])
+                start = time.time()
+                sorted_data_attr = sorted_data[attr]
+                split_arr = np.array_split(sorted_data_attr, indices[1:])
+                bc = list(map(np.bincount, split_arr))
+                bc_sum = list(map(sum, bc))
+                bc_prop = list(map(np.divide, bc, bc_sum))
+                comparaison = list(map(lambda sublist: sublist > percentage, bc_prop))
+                aggregated_data = list(map(sum, comparaison))
+                end = time.time()
+                print(f"Computing 'mode_count' for attribute '{attr}' took: {end - start:.4f} sec")
+            elif self.attributes[attr] == "mode":
+                start = time.time()
+                aggregated_data = list(map(lambda i: np.apply_along_axis(lambda x: [np.bincount(x.astype(int)).argmax()], axis=0, arr=sorted_data[attr][indices[i]:indices[i + 1]])[0], range(len(indices) - 1)))
+                aggregated_data.append(pd.Series(sorted_data[attr][indices[-1]:]).mode()[0])
+                end = time.time()
+                print(f"Computing 'mode' for attribute '{attr}' took: {end - start:.4f} sec")
             elif self.attributes[attr] == "sum":
                 aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].sum() for i in range(len(indices) - 1)]
                 aggregated_data.append(sorted_data[attr][indices[-1]:].sum())
@@ -196,7 +218,7 @@ class VASP:
             self.new_column_names.update({attr:"statistics_%s"%attr})
             self.drop_columns += ["statistics_%s"%attr]
             local_names.append(attr)
-
+        
         combined_data = [tuple(list(group) + [agg[i] for agg in all_aggregated_datalist]) for i, group in enumerate(groups)]
         result_array = np.array(combined_data, dtype=final_dtype)
         grouped = pd.DataFrame(result_array,columns = ["voxel_x", "voxel_y", "voxel_z"]+local_names)
