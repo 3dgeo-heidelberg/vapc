@@ -187,10 +187,14 @@ class DATA_HANDLER:
         - outfile (str): Path where laz file is stored.
         """
         if not hasattr(self, 'las_header'):
-            raise ValueError("LAS header not found. Ensure a LAS file has been read.")
-        new_header = laspy.LasHeader(point_format=self.las_header.point_format, version=self.las_header.version)
-        new_header.offsets = self.las_header.offsets
-        new_header.scales = self.las_header.scales  
+            new_header = laspy.LasHeader(point_format = 6,version = "1.4")
+            new_header.offsets = [self.df["X"].mean(),self.df["Y"].mean(),self.df["Z"].mean()]
+            new_header.scales = [0.00025,0.00025,0.00025]
+            # raise ValueError("LAS header not found. Ensure a LAS file has been read.")
+        else:
+            new_header = laspy.LasHeader(point_format=self.las_header.point_format, version=self.las_header.version)
+            new_header.offsets = self.las_header.offsets
+            new_header.scales = self.las_header.scales 
         self.lasFile = laspy.LasData(new_header)
         self.lasFile.x = self.df["X"]
         self.lasFile.y = self.df["Y"]
