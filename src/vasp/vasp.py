@@ -643,3 +643,38 @@ class VASP:
             print("Filter invalid, use eq, min, min_eq, max, and max_eq only.")
 
 
+
+    @trace
+    @timeit
+    def compute_clusters(self,
+                         cluster_distance,
+                         cluster_by = ["voxel_x","voxel_y","voxel_z"]):
+        def _update_existing_objects(O, indices, relevantPoints):
+            obj, counts = np.unique(O[indices[relevantPoints]], return_counts=True)
+            existingObjects = obj[obj > 0]
+            for existingObject in existingObjects:
+                mask = np.where(O == existingObject)
+                O[mask] = existingObjects.min()
+            O[indices[relevantPoints]] = existingObjects.min()
+
+        nr_of_neighbours = 50
+        pts = np.array(self.df[cluster_by])
+        tree = KDTree(pts)
+        O = np.zeros_like(self.df[cluster_by[0]])
+        self.objectCounter = 1.
+
+        for i, point in enumerate(pts):
+            distances, indices = tree.query(point, nr_of_neighbours)
+            relevantPoints = np.where(distances <= cluster_distance)
+            if O[indices[relevantPoints]].max() < 1:
+                O[indices[relevantPoints]] = self.objectCounter
+                self.objectCounter += 1
+            else:
+                _update_existing_objects(O,indices, relevantPoints)
+
+        oids, cts = np.unique(O, return_counts=True)
+        ct_df = pd.DataFrame(data = np.array((oids,cts)).T,columns = ["cluster_id","cluster_size"])
+        self.df["cluster_id"] = O
+        self.df = self.df.merge(ct_df,on = "cluster_id",how = "left",validate="many_to_one")
+
+
