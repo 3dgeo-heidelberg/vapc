@@ -7,7 +7,8 @@ import numpy as np
 
 base_folder = os.path.abspath(os.curdir)
 test_folder = os.path.join(base_folder,"test_data")
-test_file = os.path.join(test_folder,"vasp_in.laz")
+test_file = os.path.join(test_folder,r"I:\obergurgl\02_analysis\00_reference\ScanPos007 - SINGLESCANS - 210622_121528.laz")
+# test_file = os.path.join(test_folder,"vasp_in.laz")
 
 test_out = os.path.join(test_folder,"vasp_out.laz")
 

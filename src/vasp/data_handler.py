@@ -210,7 +210,7 @@ class DATA_HANDLER:
                     self.lasFile[name] = self.df[name]
                 except Exception as e:
                     self._addDimensionToLaz(self.df[name].astype(np.float32),name)
-                    print(f"Error adding dimension '{name}': {e}\nAdding new dim '{name}'")
+                    print("Adding new dimension %s"%name)
         self.lasFile.write(outfile)
 
     @trace
