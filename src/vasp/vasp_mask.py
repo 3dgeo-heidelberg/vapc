@@ -14,7 +14,7 @@ def parse_args():
     return parser.parse_args()
 
 if __name__ == "__main__":
-    #
+    #Usage:
     #python vasp_mask.py "H:\data\vasp_stuff\vasp_mask\data\full_plot.laz" "H:\data\vasp_stuff\vasp_mask\data\full_plot_masked.laz" "H:\data\vasp_stuff\vasp_mask\data\tree_trunks.laz" 1 "true"        
     args = parse_args()
     # laz_file,laz_file_out,mask_file,mask_voxel_size,buffered = args
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     #Apply offset
     vasp_mask.compute_reduction_point()
     min_reduction_point = (min([vasp_pc.reduction_point[0],vasp_mask.reduction_point[0]]),min([vasp_pc.reduction_point[1],vasp_mask.reduction_point[1]]),min([vasp_pc.reduction_point[2],vasp_mask.reduction_point[2]]))
-    print(min_reduction_point)
+    # print(min_reduction_point)
     vasp_pc.reduction_point = min_reduction_point
     vasp_pc.compute_offset()
     vasp_mask.reduction_point = min_reduction_point
