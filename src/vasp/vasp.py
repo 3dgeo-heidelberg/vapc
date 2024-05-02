@@ -2,13 +2,15 @@
 import numpy as np
 import math
 from scipy import stats
+from scipy.spatial import KDTree
 import pandas as pd
-import pandasql as ps
+# import pandasql as ps
 from utilities import trace,timeit
 from data_handler import DATA_HANDLER
 from itertools import combinations
 import time
 import sys
+
 
 
 class VASP:
@@ -48,6 +50,8 @@ class VASP:
         self.eigenvalues = False
         self.geometric_features = False
         self.center_of_gravity = False
+        self.distance_to_center_of_gravity = False
+        self.closest_to_center_of_gravity = True
         self.center_of_voxel = False
         self.corner_of_voxel = False
         self.attributes_per_voxel = False
@@ -105,18 +109,20 @@ class VASP:
         """
         Computes attributes based on the calculate input list. [optional]
         """
-        if "big_int_index" in self.compute:       self.compute_big_int_index()
-        if "hash_index" in self.compute:          self.compute_hash_index()
-        if "point_count" in self.compute:         self.compute_point_count()
-        if "point_density" in self.compute:       self.compute_point_density()
-        if "percentage_occupied" in self.compute: self.compute_percentage_occupied()
-        if "covariance_matrix" in self.compute:   self.compute_covariance_matrix()
-        if "eigenvalues" in self.compute:         self.compute_eigenvalues()
-        if "geometric_features" in self.compute:  self.compute_geometric_features()
-        if "center_of_gravity" in self.compute:   self.compute_center_of_gravity()
-        if "std_of_cog" in self.compute:          self.compute_std_of_cog()
-        if "center_of_voxel" in self.compute:     self.compute_center_of_voxel()
-        if "corner_of_voxel" in self.compute:     self.compute_corner_of_voxel()
+        if "big_int_index" in self.compute:                 self.compute_big_int_index()
+        if "hash_index" in self.compute:                    self.compute_hash_index()
+        if "point_count" in self.compute:                   self.compute_point_count()
+        if "point_density" in self.compute:                 self.compute_point_density()
+        if "percentage_occupied" in self.compute:           self.compute_percentage_occupied()
+        if "covariance_matrix" in self.compute:             self.compute_covariance_matrix()
+        if "eigenvalues" in self.compute:                   self.compute_eigenvalues()
+        if "geometric_features" in self.compute:            self.compute_geometric_features()
+        if "center_of_gravity" in self.compute:             self.compute_center_of_gravity()
+        if "distance_to_center_of_gravity" in self.compute: self.compute_distance_to_center_of_gravity()
+        if "std_of_cog" in self.compute:                    self.compute_std_of_cog()
+        if "closest_to_center_of_gravity" in self.compute:  self.compute_closest_to_center_of_gravity()
+        if "center_of_voxel" in self.compute:               self.compute_center_of_voxel()
+        if "corner_of_voxel" in self.compute:               self.compute_corner_of_voxel()
 
     @trace
     @timeit
@@ -437,6 +443,30 @@ class VASP:
         self.percentage_occupied = round(nr_of_occupied_voxels/nr_of_voxels_within_bounding_box*100,2)
         print("%s of the voxel space is occupied"%self.percentage_occupied)
 
+   
+    def compute_distance_to_center_of_gravity(self):
+        x_diff = self.df["X"]-self.df["cog_x"]
+        y_diff = self.df["Y"]-self.df["cog_y"]
+        z_diff = self.df["Z"]-self.df["cog_z"]
+        distances = np.sqrt(x_diff**2+y_diff**2+z_diff**2)
+        self.df["distance"] = distances
+        self.distance_to_center_of_gravity = True
+
+    @trace
+    @timeit
+    def compute_closest_to_center_of_gravity(self):
+        if not self.center_of_gravity:
+            self.compute_center_of_gravity()
+            self.drop_columns += ["cog_x", "cog_y", "cog_z"]
+        if not self.distance_to_center_of_gravity:
+            self.compute_distance_to_center_of_gravity()
+            self.drop_columns += ["distance"]
+        grouped = self.df.groupby(["cog_x", "cog_y", "cog_z"])
+        self.voxel_cls2cog = grouped[["distance"]].min().reset_index()
+        self.voxel_cls2cog.rename(columns={"distance": "min_distance"}, inplace=True)
+        self.df = self.df.merge(self.voxel_cls2cog, how="left", on=["cog_x", "cog_y", "cog_z"])
+        self.closest_to_center_of_gravity = True
+
     @trace
     @timeit
     def compute_center_of_gravity(self):
@@ -588,8 +618,17 @@ class VASP:
                 self.compute_center_of_gravity()
                 self.drop_columns+=["cog_x", "cog_y", "cog_z"]
             self.new_column_names.update({"X":"cog_x","Y":"cog_y","Z":"cog_z"})
+        
+        elif self.return_at == "closest_to_center_of_gravity":
+            if not self.center_of_gravity:
+                self.compute_center_of_gravity()
+                self.drop_columns+=["cog_x", "cog_y", "cog_z"]
+            if not self.closest_to_center_of_gravity:
+                self.compute_closest_to_center_of_gravity()
+                self.drop_columns+=["min_distance"]
+            self.df = self.df[self.df["distance"]==self.df["min_distance"]]
         else:
-            print(f"Voxels cannot be reduced to {self.return_at},try 'center_of_gravity', 'center_of_voxel', or 'corner_of_voxel'")
+            print(f"Voxels cannot be reduced to {self.return_at},try 'center_of_gravity', 'center_of_voxel', 'closest_to_center_of_gravity', or 'corner_of_voxel'")
             return
 
         #Update columns with their required values

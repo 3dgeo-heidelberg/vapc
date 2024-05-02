@@ -1,5 +1,6 @@
 #For Data Handler:
 import OSToolBox as ost
+from plyfile import PlyData, PlyElement
 import struct
 import laspy
 import os
@@ -248,7 +249,21 @@ class DATA_HANDLER:
             min = np.array([min_x, min_y, min_z])
             verts[:,:3] -= np.tile(min, (verts.shape[0], 1))
 
-        ost.write_ply(filename=outfile, field_list=verts, field_names=self.df.columns, triangular_faces=faces)
+
+        # ########
+        
+        # structured_data = np.core.records.fromarrays(verts.transpose(), 
+        #                                      names=self.scalars, 
+        #                                      formats=["float64"]*len(self.scalars))
+
+        # print(verts)
+        # el = PlyElement.describe(structured_data,     "vertex",
+        #                          faces,             "faces",
+        #                  comments=[ "Created with VASP",
+        #                             "Version: 0.0.0.0"])
+        # PlyData([el], text = False).write(outfile)
+
+        ost.write_ply(filename=outfile, field_list=verts.astype(float), field_names=self.df.columns, triangular_faces=faces)
         
         
     def _addDimensionToLaz(self,
