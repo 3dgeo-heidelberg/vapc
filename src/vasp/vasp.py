@@ -3,7 +3,13 @@ import numpy as np
 import math
 from scipy import stats
 import pandas as pd
+import pandasql as ps
 from utilities import trace,timeit
+from data_handler import DATA_HANDLER
+from itertools import combinations
+import time
+import sys
+
 
 class VASP:
     def __init__(self,
@@ -48,7 +54,9 @@ class VASP:
         self.drop_columns = []
         self.new_column_names = {}
         self.reduced = False
-
+        self.reduction_point = False
+        self.offset_applied = False
+        
     @trace
     @timeit
     def get_data_from_data_handler(self,data_handler):
@@ -56,7 +64,29 @@ class VASP:
         Gets dataframe from the data handler.
         """
         self.df = data_handler.df
+        
+    @trace
+    @timeit
+    def compute_reduction_point(self):
+        self.reduction_point = [int(self.df["X"].min()),int(self.df["Y"].min()),int(self.df["Z"].min())]
 
+    @trace
+    @timeit
+    def compute_offset(self):
+        if self.reduction_point is False:
+            self.compute_reduction_point()
+        if self.offset_applied:
+            self.df["X"] += self.reduction_point[0]
+            self.df["Y"] += self.reduction_point[1]
+            self.df["Z"] += self.reduction_point[2]
+            self.offset_applied = False
+        else:
+            self.df["X"] -= self.reduction_point[0]
+            self.df["Y"] -= self.reduction_point[1]
+            self.df["Z"] -= self.reduction_point[2]
+            self.offset_applied = True
+        
+        
     @trace
     @timeit
     def voxelize(self):
@@ -65,6 +95,8 @@ class VASP:
         """
         for i,dim in enumerate(["X", "Y", "Z"]):
             self.df[f"voxel_{dim.lower()}"] = np.floor((self.df[dim] - self.origin[i]) / self.voxel_size).astype(int)
+
+        #self.df["voxel_id"] = self.df.iloc[:, -3:].astype(str).apply('_'.join, axis=1)
         self.voxelized = True
 
     @trace
@@ -82,6 +114,7 @@ class VASP:
         if "eigenvalues" in self.compute:         self.compute_eigenvalues()
         if "geometric_features" in self.compute:  self.compute_geometric_features()
         if "center_of_gravity" in self.compute:   self.compute_center_of_gravity()
+        if "std_of_cog" in self.compute:          self.compute_std_of_cog()
         if "center_of_voxel" in self.compute:     self.compute_center_of_voxel()
         if "corner_of_voxel" in self.compute:     self.compute_corner_of_voxel()
 
@@ -128,7 +161,7 @@ class VASP:
         data = np.array([tuple(row) for row in df_temp_subset.values], dtype=dtypes)
         sorted_indices = np.lexsort((data["voxel_z"], data["voxel_y"], data["voxel_x"]))
         sorted_data = data[sorted_indices]
-        groups, indices = np.unique(sorted_data[["voxel_x", "voxel_y", "voxel_z"]], return_index=True, axis=0)
+        groups, indices = np.unique(sorted_data[["voxel_x", "voxel_y", "voxel_z"]], return_index=True)#, axis=0)
         all_aggregated_data = {}
         all_aggregated_datalist = []
         final_dtype = [
@@ -139,10 +172,26 @@ class VASP:
         
         self.new_column_names = {}
         local_names = []
+        print(f"Computing attributes...")
         for attr in self.attributes.keys():
-            if self.attributes[attr] == "mode":
-                aggregated_data = [stats.mode(sorted_data[attr][indices[i]:indices[i + 1]])[0] for i in range(len(indices) - 1)]
-                aggregated_data.append(stats.mode(sorted_data[attr][indices[-1]:])[0])
+            if "mode_count" in self.attributes[attr]:
+                percentage = float(self.attributes[attr].split(",")[-1])
+                start = time.time()
+                sorted_data_attr = sorted_data[attr]
+                split_arr = np.array_split(sorted_data_attr, indices[1:])
+                bc = list(map(np.bincount, split_arr))
+                bc_sum = list(map(sum, bc))
+                bc_prop = list(map(np.divide, bc, bc_sum))
+                comparaison = list(map(lambda sublist: sublist > percentage, bc_prop))
+                aggregated_data = list(map(sum, comparaison))
+                end = time.time()
+                print(f"Computing 'mode_count' for attribute '{attr}' took: {end - start:.4f} sec")
+            elif self.attributes[attr] == "mode":
+                start = time.time()
+                aggregated_data = list(map(lambda i: np.apply_along_axis(lambda x: [np.bincount(x.astype(int)).argmax()], axis=0, arr=sorted_data[attr][indices[i]:indices[i + 1]])[0], range(len(indices) - 1)))
+                aggregated_data.append(pd.Series(sorted_data[attr][indices[-1]:]).mode()[0])
+                end = time.time()
+                print(f"Computing 'mode' for attribute '{attr}' took: {end - start:.4f} sec")
             elif self.attributes[attr] == "sum":
                 aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].sum() for i in range(len(indices) - 1)]
                 aggregated_data.append(sorted_data[attr][indices[-1]:].sum())
@@ -169,7 +218,7 @@ class VASP:
             self.new_column_names.update({attr:"statistics_%s"%attr})
             self.drop_columns += ["statistics_%s"%attr]
             local_names.append(attr)
-
+        
         combined_data = [tuple(list(group) + [agg[i] for agg in all_aggregated_datalist]) for i, group in enumerate(groups)]
         result_array = np.array(combined_data, dtype=final_dtype)
         grouped = pd.DataFrame(result_array,columns = ["voxel_x", "voxel_y", "voxel_z"]+local_names)
@@ -179,16 +228,154 @@ class VASP:
 
     @trace
     @timeit
-    def compute_big_int_index(self):
+    def compute_big_int_index_old(self):
         """
         Computes a big int index for all occupied voxels (as a str).
         """
         if self.voxelized is False:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        self.df["big_int_index"] = (self.df["voxel_x"].astype(str)+ self.df["voxel_y"].astype(str)+ self.df["voxel_z"].astype(str))
+        
+        self.df.loc[:,"big_int_index"] = (self.df.loc[:, 'voxel_x'].astype(str)+ self.df.loc[:, 'voxel_y'].astype(str)+self.df.loc[:, 'voxel_z'].astype(str)).astype(int)
         self.big_int_index = True
-    
+       
+    @trace
+    @timeit
+    def compute_big_int_index(self,
+                            n = 1000000000):
+        """
+        Computes a big int index for all occupied voxels (as a int).
+        Do not set n > 1000000000, errors will occur.
+        """
+        if self.voxelized is False:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+        
+        self.df.loc[:,"big_int_index"] = self.df.loc[:, 'voxel_x']*n**2+ self.df.loc[:, 'voxel_y']*n+self.df.loc[:, 'voxel_z']
+        self.big_int_index = True
+       
+
+   
+    @trace
+    @timeit
+    def mask_by_voxels(self,
+                     mask_file,
+                     ):
+        if self.big_int_index is False:
+            self.compute_big_int_index()
+            self.drop_columns += ["big_int_index"]
+        #Load mask file
+        dh = DATA_HANDLER([mask_file],
+                        attributes={})
+        dh.load_las_files()
+        vasp_mask = VASP(self.voxel_size,
+                        self.origin,
+                        {})
+        vasp_mask.get_data_from_data_handler(dh)
+        vasp_mask.voxelize()
+        self.compute_hash_index()
+        #mask_indices = np.unique(vasp_mask.df[["voxel_x", "voxel_y", "voxel_z"]],axis = 1)
+        mask_indices = np.unique(vasp_mask.df["hash_index"])
+        vasp_mask.df = vasp_mask.df[self.df["hash_index"].isin(mask_indices)]
+        #vasp_mask.df[["voxel_x", "voxel_y", "voxel_z"]] = mask_indices
+        vasp_mask.compute_big_int_index()
+        vasp_mask.compute_hash_index()
+        hash_indices = np.unique(vasp_mask.df["hash_index"])
+        print(hash_indices)
+        #mask by hash index
+        print(self.df)
+        print("before filtering:",self.df.shape)
+        self.df = self.df[self.df["hash_index"].isin(hash_indices)]
+        print("after hash filtering:",self.df.shape)
+        #remove wrong values by big int index
+        big_int_indices = np.unique(vasp_mask.df["big_int_index"])
+        self.compute_big_int_index()
+        self.df = self.df[self.df["big_int_index"].isin(big_int_indices)]
+        print("after big int filtering:",self.df.shape)
+        self.df = self.df.drop(["voxel_x", "voxel_y", "voxel_z","big_int_index","hash_index"],axis = 1)
+
+    @trace
+    @timeit
+    def compute_voxel_buffer(self, buffer_size:int = 1):
+        if self.voxelized is False:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+            
+        coords = np.array((self.df["voxel_x"],self.df["voxel_y"],self.df["voxel_z"])).T
+        offsets = np.arange(-buffer_size, buffer_size + 1)
+        all_combinations = np.array(np.meshgrid(offsets, offsets, offsets)).T.reshape(-1, 3)
+        expanded_coords = coords[:, np.newaxis, :] + all_combinations
+        result = expanded_coords.reshape(-1, 3)
+        self.df = pd.DataFrame(np.array(result), columns = ["voxel_x", "voxel_y", "voxel_z"])
+
+
+    @trace
+    @timeit
+    def select_by_mask_old(self,
+                     vasp_mask):
+        if self.voxelized is False:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+        if self.hash_index is False:
+            self.compute_hash_index()
+            self.drop_columns += ["hash_index"]
+        if vasp_mask.voxelized is False:
+            vasp_mask.voxelize()
+            
+        vasp_mask.compute_hash_index()
+        #mask by hash index
+        print("Points before filtering:",self.df.shape)
+        self.df = self.df[self.df["hash_index"].isin(vasp_mask.df["hash_index"])]
+        print("Points after filtering:",self.df.shape)
+        self.df = self.df.drop(["voxel_x", "voxel_y", "voxel_z","hash_index"],axis = 1)
+        
+    @trace
+    @timeit
+    def select_by_mask(self,
+                     vasp_mask,
+                     mask_attribute = "big_int_index"):
+        if self.voxelized is False:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+            self.drop_columns += ["hash_index"]
+        if vasp_mask.voxelized is False:
+            vasp_mask.voxelize()
+        if mask_attribute not in self.df.columns:
+            self.compute = [mask_attribute]
+            self.compute_requested_attributes()
+        if mask_attribute not in vasp_mask.df.columns:
+            vasp_mask.compute = [mask_attribute]
+            vasp_mask.compute_requested_attributes()
+       
+        #mask by attribute
+        print("Points before filtering:",self.df.shape)
+        self.df = self.df[self.df[mask_attribute].isin(vasp_mask.df[mask_attribute])]
+        print("Points after filtering:",self.df.shape)
+        self.df = self.df.drop(["voxel_x", "voxel_y", "voxel_z",mask_attribute],axis = 1)
+
+    @trace
+    @timeit
+    def select_by_mask_old2(self,
+                     vasp_mask,
+                     mask_attribute = "big_int_index"):
+        if self.voxelized is False:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+            self.drop_columns += ["hash_index"]
+        if vasp_mask.voxelized is False:
+            vasp_mask.voxelize()
+        print(self.df)
+        self.compute_big_int_index()
+        print(vasp_mask.df)
+        vasp_mask.compute_big_int_index()
+        #mask by attribute
+        print("Points before filtering:",self.df.shape)
+        self.df = self.df[self.df[mask_attribute].isin(vasp_mask.df[mask_attribute])]
+        print("Points after filtering:",self.df.shape)
+        self.df = self.df.drop(["voxel_x", "voxel_y", "voxel_z","big_int_index"],axis = 1)
+
+        
+
     @trace
     @timeit
     def compute_hash_index(self,
@@ -202,7 +389,7 @@ class VASP:
         if self.voxelized is False:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        self.df["hash_index"] = (self.df["voxel_x"] * p1 ^ self.df["voxel_y"] * p2 ^ self.df["voxel_z"] * p3) % n
+        self.df["hash_index"] = ((self.df["voxel_x"] * p1) ^ (self.df["voxel_y"] * p2) ^ (self.df["voxel_z"] * p3)) % n
         self.hash_index = True
 
     @trace
@@ -262,6 +449,21 @@ class VASP:
         grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"])
         self.voxel_cog = grouped[["X", "Y", "Z"]].mean().reset_index()
         self.voxel_cog.rename(columns={"X": "cog_x", "Y": "cog_y", "Z": "cog_z"}, inplace=True)
+        self.df = self.df.merge(self.voxel_cog, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
+        self.center_of_gravity = True
+
+    @trace
+    @timeit
+    def compute_std_of_cog(self):
+        """
+        Computes the center of gravity for all occupied voxels.
+        """
+        if self.voxelized is False:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+        grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"])
+        self.voxel_cog = grouped[["X", "Y", "Z"]].std().reset_index()
+        self.voxel_cog.rename(columns={"X": "std_x", "Y": "std_y", "Z": "std_z"}, inplace=True)
         self.df = self.df.merge(self.voxel_cog, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
         self.center_of_gravity = True
 
@@ -331,7 +533,7 @@ class VASP:
             self.drop_columns += ["cov_xx", "cov_xy", "cov_xz", "cov_yx", "cov_yy", "cov_yz", "cov_zx", "cov_zy", "cov_zz"]
         grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"])
         eig_df = grouped.apply(_eigenvalues)
-        col_names = ["Eigenvalue 1", "Eigenvalue 2","Eigenvalue 3"]
+        col_names = ["Eigenvalue_1", "Eigenvalue_2","Eigenvalue_3"]
         eigenvalue_df = pd.DataFrame(eig_df.tolist(), index=eig_df.index, columns=col_names).reset_index()
         self.df = self.df.merge(eigenvalue_df, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
         self.eigenvalues = True
@@ -344,18 +546,18 @@ class VASP:
         """
         if self.eigenvalues is False:
             self.compute_eigenvalues()
-            self.drop_columns += ["Eigenvalue 1", "Eigenvalue 2","Eigenvalue 3"]
-        self.df["Sum of Eigenvalues"] = self.df["Eigenvalue 1"]+self.df["Eigenvalue 2"]+self.df["Eigenvalue 3"]
-        self.df["Omnivariance"] = (self.df["Eigenvalue 1"]*self.df["Eigenvalue 2"]*self.df["Eigenvalue 3"])**(1/3)
+            self.drop_columns += ["Eigenvalue_1", "Eigenvalue_2","Eigenvalue_3"]
+        self.df["Sum_of_Eigenvalues"] = self.df["Eigenvalue_1"]+self.df["Eigenvalue_2"]+self.df["Eigenvalue_3"]
+        self.df["Omnivariance"] = (self.df["Eigenvalue_1"]*self.df["Eigenvalue_2"]*self.df["Eigenvalue_3"])**(1/3)
         try:
-            self.df["Eigentropy"] = -1*(self.df["Eigenvalue 1"]*math.log(self.df["Eigenvalue 1"])+self.df["Eigenvalue 2"]*math.log(self.df["Eigenvalue 2"])+self.df["Eigenvalue 3"]*math.log(self.df["Eigenvalue 3"]))
+            self.df["Eigentropy"] = -1*(self.df["Eigenvalue_1"]*math.log(self.df["Eigenvalue_1"])+self.df["Eigenvalue_2"]*math.log(self.df["Eigenvalue_2"])+self.df["Eigenvalue_3"]*math.log(self.df["Eigenvalue_3"]))
         except:
             self.df["Eigentropy"] = np.nan
-        self.df["Anisotropy"] = (self.df["Eigenvalue 1"]-self.df["Eigenvalue 3"])/self.df["Eigenvalue 1"]
-        self.df["Planarity"] = (self.df["Eigenvalue 2"]-self.df["Eigenvalue 3"])/self.df["Eigenvalue 1"]
-        self.df["Linearity"] = (self.df["Eigenvalue 1"]-self.df["Eigenvalue 2"])/self.df["Eigenvalue 1"]
-        self.df["Surface Variation"] = self.df["Eigenvalue 3"]/self.df["Sum of Eigenvalues"]
-        self.df["Sphericity"] = self.df["Eigenvalue 3"]/self.df["Eigenvalue 1"]
+        self.df["Anisotropy"] = (self.df["Eigenvalue_1"]-self.df["Eigenvalue_3"])/self.df["Eigenvalue_1"]
+        self.df["Planarity"] = (self.df["Eigenvalue_2"]-self.df["Eigenvalue_3"])/self.df["Eigenvalue_1"]
+        self.df["Linearity"] = (self.df["Eigenvalue_1"]-self.df["Eigenvalue_2"])/self.df["Eigenvalue_1"]
+        self.df["Surface_Variation"] = self.df["Eigenvalue_3"]/self.df["Sum_of_Eigenvalues"]
+        self.df["Sphericity"] = self.df["Eigenvalue_3"]/self.df["Eigenvalue_1"]
         self.geometric_features = True
 
     @trace
@@ -432,12 +634,47 @@ class VASP:
         elif min_max_eq == "min":
             self.df = self.df[self.df[filter_attribute]>filter_value]
         elif min_max_eq == "min_eq":
-            self.df = self.df[filter_attribute>=filter_value]
+            self.df = self.df[self.df[filter_attribute]>=filter_value]
         elif min_max_eq == "max":
-            self.df = self.df[filter_attribute>filter_value]
+            self.df = self.df[self.df[filter_attribute]<filter_value]
         elif min_max_eq == "max_eq":
-            self.df = self.df[filter_attribute>=filter_value]
+            self.df = self.df[self.df[filter_attribute]<=filter_value]
         else:
             print("Filter invalid, use eq, min, min_eq, max, and max_eq only.")
+
+
+
+    @trace
+    @timeit
+    def compute_clusters(self,
+                         cluster_distance,
+                         cluster_by = ["voxel_x","voxel_y","voxel_z"]):
+        def _update_existing_objects(O, indices, relevantPoints):
+            obj, counts = np.unique(O[indices[relevantPoints]], return_counts=True)
+            existingObjects = obj[obj > 0]
+            for existingObject in existingObjects:
+                mask = np.where(O == existingObject)
+                O[mask] = existingObjects.min()
+            O[indices[relevantPoints]] = existingObjects.min()
+
+        nr_of_neighbours = 50
+        pts = np.array(self.df[cluster_by])
+        tree = KDTree(pts)
+        O = np.zeros_like(self.df[cluster_by[0]])
+        self.objectCounter = 1.
+
+        for i, point in enumerate(pts):
+            distances, indices = tree.query(point, nr_of_neighbours)
+            relevantPoints = np.where(distances <= cluster_distance)
+            if O[indices[relevantPoints]].max() < 1:
+                O[indices[relevantPoints]] = self.objectCounter
+                self.objectCounter += 1
+            else:
+                _update_existing_objects(O,indices, relevantPoints)
+
+        oids, cts = np.unique(O, return_counts=True)
+        ct_df = pd.DataFrame(data = np.array((oids,cts)).T,columns = ["cluster_id","cluster_size"])
+        self.df["cluster_id"] = O
+        self.df = self.df.merge(ct_df,on = "cluster_id",how = "left",validate="many_to_one")
 
 

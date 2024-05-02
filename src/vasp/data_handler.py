@@ -1,4 +1,6 @@
 #For Data Handler:
+import OSToolBox as ost
+import struct
 import laspy
 import os
 import numpy as np
@@ -185,10 +187,14 @@ class DATA_HANDLER:
         - outfile (str): Path where laz file is stored.
         """
         if not hasattr(self, 'las_header'):
-            raise ValueError("LAS header not found. Ensure a LAS file has been read.")
-        new_header = laspy.LasHeader(point_format=self.las_header.point_format, version=self.las_header.version)
-        new_header.offsets = self.las_header.offsets
-        new_header.scales = self.las_header.scales  
+            new_header = laspy.LasHeader(point_format = 6,version = "1.4")
+            new_header.offsets = [self.df["X"].mean(),self.df["Y"].mean(),self.df["Z"].mean()]
+            new_header.scales = [0.00025,0.00025,0.00025]
+            # raise ValueError("LAS header not found. Ensure a LAS file has been read.")
+        else:
+            new_header = laspy.LasHeader(point_format=self.las_header.point_format, version=self.las_header.version)
+            new_header.offsets = self.las_header.offsets
+            new_header.scales = self.las_header.scales 
         self.lasFile = laspy.LasData(new_header)
         self.lasFile.x = self.df["X"]
         self.lasFile.y = self.df["Y"]
@@ -211,9 +217,9 @@ class DATA_HANDLER:
     @trace
     @timeit
     def save_as_ply(self, 
-                      outfile:str, 
-                      voxel_size:float, 
-                      shift_to_center:bool = False):
+                        outfile:str, 
+                        voxel_size:float, 
+                        shift_to_center:bool = False):
         """
         Saves the voxeldata as "cubes" in a .ply file. 
         !!!Fixed shift as parameter might be interesting.
@@ -223,38 +229,28 @@ class DATA_HANDLER:
         - voxel_size (float): Edgelength of the voxels will be created with.
         - shift_to_center (bool): Shift data to origin. Usefull for visualisations in Blender to avoid shifting data.
         """
+        
+
         self.voxel_size = voxel_size
-        verts, faces, vert_colors = self._generate_mesh_data()
+        self.scalars = self.df.columns
+        self.scalars = self.scalars.drop(["X","Y","Z"])
+        try:
+            self.scalars = self.scalars.drop(["red","green","blue"])
+        except:
+            pass
 
-        with open(outfile, 'w') as file:
-            # Schreiben des Headers
-            file.write("ply\n")
-            file.write("format ascii 1.0\n")
-            file.write(f"element vertex {len(verts)}\n")
-            file.write("property float x\n")
-            file.write("property float y\n")
-            file.write("property float z\n")
-            file.write("property uchar red\n")  # Add red color
-            file.write("property uchar green\n")  # Add green color
-            file.write("property uchar blue\n")  # Add blue color
-            file.write(f"element face {len(faces)}\n")
-            file.write("property list uchar int vertex_indices\n")
-            file.write("end_header\n")
-            center_offset = voxel_size / 2
-            # Schreiben der Vertices
-            if shift_to_center:
-                min_x = self.df.X.mean() + center_offset
-                min_y = self.df.Y.mean() + center_offset
-                min_z = self.df.Z.mean() + center_offset
-            else:
-                min_x,min_y,min_z = 0 + center_offset, 0 + center_offset, 0 + center_offset
+        #verts, faces, vert_colors, attributes = self._generate_mesh_data()
+        verts, faces = self._generate_mesh_data()
+        if shift_to_center:
+            min_x = self.df.X.mean() + self.voxel_size / 2
+            min_y = self.df.Y.mean() + self.voxel_size / 2
+            min_z = self.df.Z.mean() + self.voxel_size / 2
+            min = np.array([min_x, min_y, min_z])
+            verts[:,:3] -= np.tile(min, (verts.shape[0], 1))
 
-            for vert,color in zip(verts, vert_colors):
-                file.write(f"{np.real(vert[0]-min_x)} {np.real(vert[1]-min_y)} {np.real(vert[2]-min_z)} {int(color[0])} {int(color[1])} {int(color[2])} \n")
-            
-            for face in faces:
-                file.write(f"4 {face[0]} {face[1]} {face[2]} {face[3]}\n")
-
+        ost.write_ply(filename=outfile, field_list=verts, field_names=self.df.columns, triangular_faces=faces)
+        
+        
     def _addDimensionToLaz(self,
                            array,
                            name):
@@ -268,6 +264,7 @@ class DATA_HANDLER:
         ))
         self.lasFile[name] = array
 
+
     @trace
     @timeit
     def _generate_mesh_data(self):
@@ -275,56 +272,76 @@ class DATA_HANDLER:
         Generate mesh data from voxel information.
         Returns a tuple of vertices, faces, and vertex colors.
         """
-        vertices = []
-        faces = []
-        vertex_colors = []
-        voxel_to_vertex_indices = {}
-        vertices_dict = {}
+        
+        df_values = np.c_[self.df['X'].values, self.df['Y'].values, self.df['Z'].values,  self.df.iloc[:,3:].values]
 
-        # Iterating over voxels
-        for voxel in self.df.itertuples():
-            voxel_index = (voxel.X, voxel.Y, voxel.Z)
+        # Calculate voxel corners
+        corners = self._calculate_voxel_corners(df_values)
 
+        # Add faces for one cube (a mesh voxel made of triangles)
+        face_indices_0 = np.array([
+            [0, 1, 2],  # Front
+            [4, 5, 6],  # Back
+            [0, 1, 5],  # Bottom
+            [2, 3, 7],  # Top
+            [1, 2, 6],  # Right
+            [3, 0, 4],  # Left
+            [0, 3, 2],  # Front
+            [4, 7, 6],  # Back
+            [0, 4, 5],  # Bottom
+            [2, 6, 7],  # Top
+            [1, 5, 6],  # Right
+            [3, 7, 4]   # Left
+        ])
 
-            # Calculate voxel corners
-            corners = self._calculate_voxel_corners(voxel_index)
-            corner_indices = []
+        # Number of corners
+        corners_shp = corners.shape[0]
 
-            for corner in corners:
-                if corner not in vertices_dict:
-                    vertices_dict[corner] = len(vertices_dict)
-                    vertices.append(corner)
-                    # Handle vertex color
-                    color = [voxel.red // 256, voxel.green // 256, voxel.blue // 256] if hasattr(self.df, "red") else [216,179,101]
-                    vertex_colors.append(color)
+        # Number of voxels (number of corners divided by 8)
+        vxl_shp = int(corners_shp/8)
+        
+        # Tile the face indices array so the number of cubes is the same as the number of voxels
+        face_indices = np.tile(face_indices_0, (vxl_shp,1))
 
-                corner_indices.append(vertices_dict[corner])
+        # Making an array to add to the face indices which will then be able to fetch the corresponding corner index for each face
+        n = np.arange(0, corners_shp, 8)
+        n = np.repeat(n, face_indices_0.shape[0])
+        n = np.tile(n, (face_indices_0.shape[1], 1)).T
 
-            voxel_to_vertex_indices[voxel_index] = corner_indices
+        # Adding up the array
+        face_indices += n
 
-            # Add faces
-            face_indices = [
-                [0, 1, 2, 3],  # Front
-                [4, 5, 6, 7],  # Back
-                [0, 1, 5, 4],  # Bottom
-                [2, 3, 7, 6],  # Top
-                [1, 2, 6, 5],  # Right
-                [3, 0, 4, 7]   # Left
-            ]
-            faces.extend([[corner_indices[i] for i in face] for face in face_indices])
+        return corners, face_indices
+    
 
-        return vertices, faces, vertex_colors
+    def _calculate_voxel_corners(self, df_values):
+        """
+        Compute corners points for all the cubes.
+        Return corners points with their respective scalars.
+        """
+        offset = self.voxel_size/2.
+        xyz_offsets = np.array([
+            [-offset, -offset, -offset],
+            [offset, -offset, -offset],
+            [offset, offset, -offset],
+            [-offset, offset, -offset],
+            [-offset, -offset, offset],
+            [offset, -offset, offset],
+            [offset, offset, offset],
+            [-offset, offset, offset]
+        ])
 
-    def _calculate_voxel_corners(self, voxel_index):
-        x, y, z = voxel_index
-        corners = [
-            (x, y, z),
-            (x + self.voxel_size, y, z),
-            (x + self.voxel_size, y + self.voxel_size, z),
-            (x, y + self.voxel_size, z),
-            (x, y, z + self.voxel_size),
-            (x + self.voxel_size, y, z + self.voxel_size),
-            (x + self.voxel_size, y + self.voxel_size, z + self.voxel_size),
-            (x, y + self.voxel_size, z + self.voxel_size)
-        ]
-        return corners
+        # Fetch scalars array and repeat each line the number of lines in xyz_offsets
+        scalars = df_values[:,3:]
+        scalars = np.repeat(scalars, xyz_offsets.shape[0], axis=0)
+
+        # Add offsets for each points
+        xyz = df_values[:,:3][:, np.newaxis] + xyz_offsets
+        xyz = np.vstack(xyz)
+
+        # Concatenate the points with their respective scalars
+        xyz_scalars = np.c_[xyz, scalars]
+
+        return xyz_scalars
+    
+    
