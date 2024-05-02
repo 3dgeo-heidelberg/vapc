@@ -124,28 +124,28 @@ class VASP:
         if "center_of_voxel" in self.compute:               self.compute_center_of_voxel()
         if "corner_of_voxel" in self.compute:               self.compute_corner_of_voxel()
 
-    @trace
-    @timeit
-    def compute_requested_statistics_per_attributes(self):
-        """
-        Computes the statistics requested per existing attribute. Can not 
-        be used for calculating mode (use numpy implementation for that)
-        """
-        if self.voxelized is False:
-            self.voxelize()
-            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"]).agg(self.attributes).reset_index()
-        self.new_column_names = {}
-        for attr in self.attributes:
-            self.new_column_names.update({attr:"statistics_%s"%attr})
-            self.drop_columns += ["statistics_%s"%attr]
-        grouped.rename(columns=self.new_column_names, inplace=True)
-        self.df = self.df.merge(grouped, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
-        self.attributes_per_voxel = True
+    # @trace
+    # @timeit
+    # def compute_requested_statistics_per_attributes_old(self):
+    #     """
+    #     Computes the statistics requested per existing attribute. Can not 
+    #     be used for calculating mode (use numpy implementation for that)
+    #     """
+    #     if self.voxelized is False:
+    #         self.voxelize()
+    #         self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+    #     grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"]).agg(self.attributes).reset_index()
+    #     self.new_column_names = {}
+    #     for attr in self.attributes:
+    #         self.new_column_names.update({attr:"statistics_%s"%attr})
+    #         self.drop_columns += ["statistics_%s"%attr]
+    #     grouped.rename(columns=self.new_column_names, inplace=True)
+    #     self.df = self.df.merge(grouped, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
+    #     self.attributes_per_voxel = True
 
     @trace
     @timeit
-    def compute_requested_statistics_per_attributes_numpy(self):
+    def compute_requested_statistics_per_attributes(self):
         """
         Computes the statistics requested per existing attribute. Can also 
         be used for calculating mode. However needs more testing for now.
@@ -175,60 +175,65 @@ class VASP:
             ("voxel_y", groups["voxel_y"].dtype), 
             ("voxel_z", groups["voxel_z"].dtype)
             ]
-        
-        self.new_column_names = {}
+        local_names_col_names = {}
         local_names = []
-        print(f"Computing attributes...")
+        print("Computing stats")
         for attr in self.attributes.keys():
-            if "mode_count" in self.attributes[attr]:
-                percentage = float(self.attributes[attr].split(",")[-1])
-                start = time.time()
-                sorted_data_attr = sorted_data[attr]
-                split_arr = np.array_split(sorted_data_attr, indices[1:])
-                bc = list(map(np.bincount, split_arr))
-                bc_sum = list(map(sum, bc))
-                bc_prop = list(map(np.divide, bc, bc_sum))
-                comparaison = list(map(lambda sublist: sublist > percentage, bc_prop))
-                aggregated_data = list(map(sum, comparaison))
-                end = time.time()
-                print(f"Computing 'mode_count' for attribute '{attr}' took: {end - start:.4f} sec")
-            elif self.attributes[attr] == "mode":
-                start = time.time()
-                aggregated_data = list(map(lambda i: np.apply_along_axis(lambda x: [np.bincount(x.astype(int)).argmax()], axis=0, arr=sorted_data[attr][indices[i]:indices[i + 1]])[0], range(len(indices) - 1)))
-                aggregated_data.append(pd.Series(sorted_data[attr][indices[-1]:]).mode()[0])
-                end = time.time()
-                print(f"Computing 'mode' for attribute '{attr}' took: {end - start:.4f} sec")
-            elif self.attributes[attr] == "sum":
-                aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].sum() for i in range(len(indices) - 1)]
-                aggregated_data.append(sorted_data[attr][indices[-1]:].sum())
-            elif self.attributes[attr] == "mean":
-                aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].mean() for i in range(len(indices) - 1)]
-                aggregated_data.append(sorted_data[attr][indices[-1]:].mean())
-            elif self.attributes[attr] == "median":
-                aggregated_data = [np.median(sorted_data[attr][indices[i]:indices[i + 1]]) for i in range(len(indices) - 1)]
-                aggregated_data.append(np.median(sorted_data[attr][indices[-1]:]))
-            elif self.attributes[attr] == "min":
-                aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].min() for i in range(len(indices) - 1)]
-                aggregated_data.append(sorted_data[attr][indices[-1]:].min())
-            elif self.attributes[attr] == "max":
-                aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].max() for i in range(len(indices) - 1)]
-                aggregated_data.append(sorted_data[attr][indices[-1]:].max())
-            else:
-                print("Aggregation type unknown for %s"%attr)
-                self.drop_columns(attr)
-                continue
+            if not type(self.attributes[attr]) is list:
+                self.attributes[attr] = [self.attributes[attr]]
+            for enum,stat_request in enumerate(self.attributes[attr]):
+                if stat_request == "mode_count":
+                    percentage = float(self.attributes[attr].split(",")[-1])
+                    start = time.time()
+                    sorted_data_attr = sorted_data[attr]
+                    split_arr = np.array_split(sorted_data_attr, indices[1:])
+                    bc = list(map(np.bincount, split_arr))
+                    bc_sum = list(map(sum, bc))
+                    bc_prop = list(map(np.divide, bc, bc_sum))
+                    comparaison = list(map(lambda sublist: sublist > percentage, bc_prop))
+                    aggregated_data = list(map(sum, comparaison))
+                    end = time.time()
+                    print(f"Computing 'mode_count' for attribute '{attr}' took: {end - start:.4f} sec")
+                elif stat_request == "mode":
+                    start = time.time()
+                    aggregated_data = list(map(lambda i: np.apply_along_axis(lambda x: [np.bincount(x.astype(int)).argmax()], axis=0, arr=sorted_data[attr][indices[i]:indices[i + 1]])[0], range(len(indices) - 1)))
+                    aggregated_data.append(pd.Series(sorted_data[attr][indices[-1]:]).mode()[0])
+                    end = time.time()
+                    print(f"Computing 'mode' for attribute '{attr}' took: {end - start:.4f} sec")
+                elif stat_request == "sum":
+                    aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].sum() for i in range(len(indices) - 1)]
+                    aggregated_data.append(sorted_data[attr][indices[-1]:].sum())
+                elif stat_request == "mean":
+                    aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].mean() for i in range(len(indices) - 1)]
+                    aggregated_data.append(sorted_data[attr][indices[-1]:].mean())
+                elif stat_request == "median":
+                    aggregated_data = [np.median(sorted_data[attr][indices[i]:indices[i + 1]]) for i in range(len(indices) - 1)]
+                    aggregated_data.append(np.median(sorted_data[attr][indices[-1]:]))
+                elif stat_request == "min":
+                    aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].min() for i in range(len(indices) - 1)]
+                    aggregated_data.append(sorted_data[attr][indices[-1]:].min())
+                elif stat_request == "max":
+                    aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].max() for i in range(len(indices) - 1)]
+                    aggregated_data.append(sorted_data[attr][indices[-1]:].max())
+                else:
+                    print("Aggregation type unknown for %s"%attr)
+                    self.drop_columns(attr)
+                    continue
 
-            all_aggregated_data[attr] = aggregated_data
-            all_aggregated_datalist.append(aggregated_data)
-            final_dtype += [(attr,np.array(aggregated_data).dtype)]
-            self.new_column_names.update({attr:"statistics_%s"%attr})
-            self.drop_columns += ["statistics_%s"%attr]
-            local_names.append(attr)
-        
+                # all_aggregated_data[attr+"_%s"%enum] = aggregated_data
+                all_aggregated_datalist.append(aggregated_data)
+                final_dtype += [(attr+"_%s"%enum,np.array(aggregated_data).dtype)]
+                local_names_col_names.update({attr+"_%s"%enum:"%s_%s"%(attr,stat_request)})
+                local_names.append(attr+"_%s"%enum)
+                print(local_names_col_names)
+                #If attributes should not be saved with stat indication activate lower line.
+                # self.drop_columns += ["%s_%s"%attr,self.attributes[attr]]
+                # local_names.append(attr)
         combined_data = [tuple(list(group) + [agg[i] for agg in all_aggregated_datalist]) for i, group in enumerate(groups)]
+
         result_array = np.array(combined_data, dtype=final_dtype)
         grouped = pd.DataFrame(result_array,columns = ["voxel_x", "voxel_y", "voxel_z"]+local_names)
-        grouped.rename(columns=self.new_column_names, inplace=True)
+        grouped.rename(columns=local_names_col_names, inplace=True)
         self.df = self.df.merge(grouped, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
         self.attributes_per_voxel = True
 
