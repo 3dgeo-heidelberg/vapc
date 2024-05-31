@@ -18,12 +18,7 @@ if __name__ == "__main__":
     #python vasp_mask.py "H:\data\vasp_stuff\vasp_mask\data\full_plot.laz" "H:\data\vasp_stuff\vasp_mask\data\full_plot_masked.laz" "H:\data\vasp_stuff\vasp_mask\data\tree_trunks.laz" 1 "true"        
     args = parse_args()
     # laz_file,laz_file_out,mask_file,mask_voxel_size,buffered = args
-    dh = DATA_HANDLER([args.laz_file],
-                    attributes={"intensity":"mean",
-                                "number_of_returns":"mean",
-                                "return_number":"mean",
-                                "gps_time":"mean",
-                                "classification":"mean"})
+    dh = DATA_HANDLER(args.laz_file)
     dh.load_las_files()
     
     vasp_pc = VASP(float(args.mask_voxel_size),
@@ -34,8 +29,7 @@ if __name__ == "__main__":
     #Apply offset
     vasp_pc.compute_reduction_point()
     
-    dh_mask = DATA_HANDLER([args.mask_file],
-                            attributes = {})
+    dh_mask = DATA_HANDLER([args.mask_file])
                             
     dh_mask.load_las_files()
     vasp_mask = VASP(float(args.mask_voxel_size),
@@ -50,7 +44,6 @@ if __name__ == "__main__":
     vasp_pc.compute_offset()
     vasp_mask.reduction_point = min_reduction_point
     vasp_mask.compute_offset()
-    
     
     #Buffer mask voxelized point cloud
     vasp_mask.compute_voxel_buffer(buffer_size = int(args.buffer_size))
