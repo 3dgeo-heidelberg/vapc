@@ -40,6 +40,7 @@ class VASP:
         self.compute = compute
         self.return_at = return_at
         #Calculations not applied yet:
+        self.attributes_up_to_data = False
         self.voxelized = False
         self.big_int_index = False
         self.hash_index = False
@@ -68,6 +69,7 @@ class VASP:
         Gets dataframe from the data handler.
         """
         self.df = data_handler.df
+        self.original_attributes = self.df.columns
         
     @trace
     @timeit
@@ -147,12 +149,15 @@ class VASP:
         """
         If not specified, for each attribute the mean will be computed if point cloud is voxelized. If specified, the selected statistic will me computed
         """
+        print(self.attributes)
         attributes = {}
-        for col in self.df.columns:
+        for col in self.original_attributes:
             attributes[col] = "mean"
-        for attr in self.attributes.keys:
+        for attr in self.attributes.keys():
             attributes[attr] = self.attributes[attr]
         self.attributes = attributes
+        self.attributes_up_to_data = True
+        print(self.attributes)
 
     @trace
     @timeit
@@ -173,8 +178,10 @@ class VASP:
         if self.voxelized is False:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+        if self.attributes_up_to_data is False:
+            self.update_attribute_dictionary()
         df_temp_subset = self.df[["voxel_x", "voxel_y", "voxel_z"]+list(self.attributes.keys())]
-        dtypes = [(col, df_temp_subset[col].dtype) for col in df_temp_subset.columns]
+        dtypes = [(col, df_temp_subset[col].dtypes) for col in df_temp_subset.columns]
         data = np.array([tuple(row) for row in df_temp_subset.values], dtype=dtypes)
         sorted_indices = np.lexsort((data["voxel_z"], data["voxel_y"], data["voxel_x"]))
         sorted_data = data[sorted_indices]
