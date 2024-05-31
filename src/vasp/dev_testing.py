@@ -43,8 +43,10 @@ vasp_config = {
 			"return_at":"closest_to_center_of_gravity"
 		}
 
+
 dh = DATA_HANDLER(test_file)
 dh.load_las_files()
+
 
 vasp = VASP(vasp_config["voxel_size"],
             vasp_config["origin"],
@@ -55,7 +57,6 @@ vasp = VASP(vasp_config["voxel_size"],
 vasp.get_data_from_data_handler(dh)
 vasp.voxelize()
 vasp.compute_point_count()
-print(vasp.df)
 vasp.filter_attributes( filter_attribute = "point_count",
                         min_max_eq = "min",
                         filter_value = 2,

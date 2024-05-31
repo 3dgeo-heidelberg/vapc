@@ -145,19 +145,29 @@ class VASP:
     #     self.df = self.df.merge(grouped, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
     #     self.attributes_per_voxel = True
 
-    def update_attribute_dictionary(self):
+    def update_attribute_dictionary(self, 
+                                    remove_cols = ["X","Y","Z",'bit_fields', 
+                                              'raw_classification','scan_angle_rank', 
+                                              'user_data', 'point_source_id']):
         """
         If not specified, for each attribute the mean will be computed if point cloud is voxelized. If specified, the selected statistic will me computed
         """
-        print(self.attributes)
+        # list(map(self.attributes.remove,["X","Y","Z"])) #remove XYZ as xyz should be read directly to not scale and shift the points in an extra step.
+
+        original_attributes = list(self.original_attributes)
+        for dc in remove_cols:
+            try:
+                original_attributes.remove(dc)
+            except:
+                pass
+        # original_attributes = list(map(original_attributes.remove,remove_cols))
         attributes = {}
-        for col in self.original_attributes:
+        for col in original_attributes:
             attributes[col] = "mean"
         for attr in self.attributes.keys():
             attributes[attr] = self.attributes[attr]
         self.attributes = attributes
         self.attributes_up_to_data = True
-        print(self.attributes)
 
     @trace
     @timeit
@@ -243,7 +253,6 @@ class VASP:
                 final_dtype += [(attr+"_%s"%enum,np.array(aggregated_data).dtype)]
                 local_names_col_names.update({attr+"_%s"%enum:"%s_%s"%(attr,stat_request)})
                 local_names.append(attr+"_%s"%enum)
-                print(local_names_col_names)
                 #If attributes should not be saved with stat indication activate lower line.
                 # self.drop_columns += ["%s_%s"%attr,self.attributes[attr]]
                 # local_names.append(attr)
@@ -463,7 +472,7 @@ class VASP:
         nr_of_voxels_within_bounding_box = x_extent*y_extent*z_extent
         nr_of_occupied_voxels = len(np.unique(self.df["big_int_index"]))
         self.percentage_occupied = round(nr_of_occupied_voxels/nr_of_voxels_within_bounding_box*100,2)
-        print("%s of the voxel space is occupied"%self.percentage_occupied)
+        print("%s percent of the voxel space is occupied"%self.percentage_occupied)
 
    
     def compute_distance_to_center_of_gravity(self):
