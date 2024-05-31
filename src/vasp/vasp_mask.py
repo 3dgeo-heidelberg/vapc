@@ -19,7 +19,11 @@ if __name__ == "__main__":
     args = parse_args()
     # laz_file,laz_file_out,mask_file,mask_voxel_size,buffered = args
     dh = DATA_HANDLER([args.laz_file],
-                    attributes={"intensity":"mean"})
+                    attributes={"intensity":"mean",
+                                "number_of_returns":"mean",
+                                "return_number":"mean",
+                                "gps_time":"mean",
+                                "classification":"mean"})
     dh.load_las_files()
     
     vasp_pc = VASP(float(args.mask_voxel_size),
