@@ -9,8 +9,7 @@ from scipy import stats
 
 class DATA_HANDLER:
     def __init__(self,
-                 infiles:list,
-                 attributes:dict
+                 infiles:list
                  ):
         """
         Contains the functionality for opening and saving data. 
@@ -22,8 +21,6 @@ class DATA_HANDLER:
                                 what statistics to carry out on them.
         """
         self.files = infiles
-        self.attributes = attributes
-
 
     @trace
     @timeit
@@ -32,148 +29,148 @@ class DATA_HANDLER:
         This function opens one or more laz files and reads them.  
         The data is stored in a Pandas dataframe.
         """
+
         all_data = []
+        print(self.files)
+        if type(self.files) is str:
+            self.files = [self.files]
+
         for filepath in self.files:
-            print(filepath)
             print("Loading ... %s"%os.path.basename(filepath))
             with laspy.open(filepath) as lf:
                 las = lf.read()
                 self.las_header = las.header
-                x = las.X * self.las_header.scales[0] + self.las_header.offsets[0]
-                y = las.Y * self.las_header.scales[1] + self.las_header.offsets[1]
-                z = las.Z * self.las_header.scales[2] + self.las_header.offsets[2]
-                df_content = {'X': x, 'Y': y, 'Z': z}
-                for rel_attr in list(self.attributes.keys()):
-                    if hasattr(las,rel_attr):
-                        df_content[rel_attr] = np.array(las[rel_attr])
-                    else:
-                        print("Could not find %s"%rel_attr)
-                all_data.append(pd.DataFrame(df_content))
+                self.attributes = list(las.points.array.dtype.names)
+                list(map(self.attributes.remove,["X","Y","Z"]))
+                df = pd.DataFrame(
+                                data = np.array([las.x,las.y,las.z]+[las[attr] for attr in self.attributes]).T,
+                                columns = ["X","Y","Z"]+[attr for attr in self.attributes])
+                all_data.append(df)
         # Merge all data frames in the list and store in self.df
         self.df = pd.concat(all_data, ignore_index=True)
     
-    
-    @trace
-    @timeit
-    def load_las_files_chunkwise(self,
-                                      sub_voxel_size:float,
-                                      origin:list = [0,0,0],
-                                      chunk_reader_size:int = 10_000):
-        """
-        This function opens one or more laz files and reads them using the chunk iterator.
-        This approach uses less RAM. A chunk size of approximately 10_000 currently delivers 
-        the highest performance. The data is stored in a Pandas dataframe.
+    ### Chunkwise reading works but requires some updates
+    # @trace
+    # @timeit
+    # def load_las_files_chunkwise(self,
+    #                                   sub_voxel_size:float,
+    #                                   origin:list = [0,0,0],
+    #                                   chunk_reader_size:int = 10_000):
+    #     """
+    #     This function opens one or more laz files and reads them using the chunk iterator.
+    #     This approach uses less RAM. A chunk size of approximately 10_000 currently delivers 
+    #     the highest performance. The data is stored in a Pandas dataframe.
 
-        Parameters:
-        - sub_voxel_size (float): Size of subvoxels the original data is reduced to.
-        - origin (list): Origin of the voxel space.
-        - chunk_reader_size (int): Number of points read per iteration.
-        """
-        false_attributes = []
-        filled_voxel_dict = {}
-        filled_voxel_attr_dict = {}
-        self.origin = origin
-        for filepath in self.files:
-            with laspy.open(filepath) as lf:
-                print("Loading ... %s"%os.path.basename(filepath))
-                self.las_header = lf.header
-                for sub_las in lf.chunk_iterator(chunk_reader_size):
-                    x = sub_las.X * self.las_header.scales[0] + self.las_header.offsets[0]
-                    y = sub_las.Y * self.las_header.scales[1] + self.las_header.offsets[1]
-                    z = sub_las.Z * self.las_header.scales[2] + self.las_header.offsets[2]
-                    df_content = {'X': x, 'Y': y, 'Z': z}
-                    for rel_attr in self.attributes:
-                        if hasattr(sub_las,rel_attr):
-                            df_content[rel_attr] = sub_las[rel_attr]
-                        else:
-                            print("Could not find %s"%rel_attr)
-                    x_voxels = np.floor((x - self.origin[0]) / sub_voxel_size).astype(int)
-                    y_voxels = np.floor((y - self.origin[1]) / sub_voxel_size).astype(int)
-                    z_voxels = np.floor((z - self.origin[2]) / sub_voxel_size).astype(int)
-                    xyz_voxel_coords = np.column_stack((x_voxels, y_voxels, z_voxels))
-                    unique_voxel_coords, indices, counts = np.unique(xyz_voxel_coords, axis=0, return_counts=True, return_inverse=True)
+    #     Parameters:
+    #     - sub_voxel_size (float): Size of subvoxels the original data is reduced to.
+    #     - origin (list): Origin of the voxel space.
+    #     - chunk_reader_size (int): Number of points read per iteration.
+    #     """
+    #     false_attributes = []
+    #     filled_voxel_dict = {}
+    #     filled_voxel_attr_dict = {}
+    #     self.origin = origin
+    #     for filepath in self.files:
+    #         with laspy.open(filepath) as lf:
+    #             print("Loading ... %s"%os.path.basename(filepath))
+    #             self.las_header = lf.header
+    #             for sub_las in lf.chunk_iterator(chunk_reader_size):
+    #                 x = sub_las.X * self.las_header.scales[0] + self.las_header.offsets[0]
+    #                 y = sub_las.Y * self.las_header.scales[1] + self.las_header.offsets[1]
+    #                 z = sub_las.Z * self.las_header.scales[2] + self.las_header.offsets[2]
+    #                 df_content = {'X': x, 'Y': y, 'Z': z}
+    #                 for rel_attr in self.attributes:
+    #                     if hasattr(sub_las,rel_attr):
+    #                         df_content[rel_attr] = sub_las[rel_attr]
+    #                     else:
+    #                         print("Could not find %s"%rel_attr)
+    #                 x_voxels = np.floor((x - self.origin[0]) / sub_voxel_size).astype(int)
+    #                 y_voxels = np.floor((y - self.origin[1]) / sub_voxel_size).astype(int)
+    #                 z_voxels = np.floor((z - self.origin[2]) / sub_voxel_size).astype(int)
+    #                 xyz_voxel_coords = np.column_stack((x_voxels, y_voxels, z_voxels))
+    #                 unique_voxel_coords, indices, counts = np.unique(xyz_voxel_coords, axis=0, return_counts=True, return_inverse=True)
 
-                    xyz_coords = np.column_stack((x, y, z))
-                    for i, voxel_coord in enumerate(unique_voxel_coords):
-                        voxel_str = str(tuple(voxel_coord))
-                        mean_coord = np.mean(xyz_coords[indices == i], axis=0)
-                        attr_data_dic = {}
-                        for attr in self.attributes:
-                            attr_data_at_voxel = sub_las[attr][indices == i]
-                            if self.attributes[attr] == "mode":
-                                attr_stat = stats.mode(attr_data_at_voxel)[0]
-                            elif self.attributes[attr] == "sum":
-                                attr_stat = attr_data_at_voxel.sum()
-                            elif self.attributes[attr] == "mean":
-                                attr_stat = attr_data_at_voxel.mean()
-                            elif self.attributes[attr] == "median":
-                                attr_stat = np.median(attr_data_at_voxel)
-                            elif self.attributes[attr] == "min":
-                                attr_stat = attr_data_at_voxel.min()
-                            elif self.attributes[attr] == "max":
-                                attr_stat = attr_data_at_voxel.max()
-                            else:
-                                false_attributes.append(attr)
-                                self.attributes.pop(attr)
-                                print("Aggregation type unknown for %s"%attr)
-                                continue
-                            attr_data_dic[attr] = attr_stat
-                        if voxel_str in filled_voxel_dict:
-                            filled_voxel_dict[voxel_str][0].append(mean_coord)
-                            filled_voxel_dict[voxel_str][1].append(counts[i])
-                            filled_voxel_dict[voxel_str][2] += counts[i]
-                            for attr in attr_data_dic.keys():
-                                filled_voxel_attr_dict[voxel_str][attr].append(attr_data_dic[attr])
-                        else:
-                            filled_voxel_dict[voxel_str] = [[mean_coord], [counts[i]],counts[i]]
-                            filled_voxel_attr_dict[voxel_str] = {}
-                            for attr in attr_data_dic.keys():
-                                filled_voxel_attr_dict[voxel_str][attr] = [attr_data_dic[attr]]
-            out_dic_pts = {}
-            out_dic_nr_of_pts = {}
-            out_dic_attributes = {}
-            for attr in self.attributes.keys():
-                out_dic_attributes[attr] = {}
+    #                 xyz_coords = np.column_stack((x, y, z))
+    #                 for i, voxel_coord in enumerate(unique_voxel_coords):
+    #                     voxel_str = str(tuple(voxel_coord))
+    #                     mean_coord = np.mean(xyz_coords[indices == i], axis=0)
+    #                     attr_data_dic = {}
+    #                     for attr in self.attributes:
+    #                         attr_data_at_voxel = sub_las[attr][indices == i]
+    #                         if self.attributes[attr] == "mode":
+    #                             attr_stat = stats.mode(attr_data_at_voxel)[0]
+    #                         elif self.attributes[attr] == "sum":
+    #                             attr_stat = attr_data_at_voxel.sum()
+    #                         elif self.attributes[attr] == "mean":
+    #                             attr_stat = attr_data_at_voxel.mean()
+    #                         elif self.attributes[attr] == "median":
+    #                             attr_stat = np.median(attr_data_at_voxel)
+    #                         elif self.attributes[attr] == "min":
+    #                             attr_stat = attr_data_at_voxel.min()
+    #                         elif self.attributes[attr] == "max":
+    #                             attr_stat = attr_data_at_voxel.max()
+    #                         else:
+    #                             false_attributes.append(attr)
+    #                             self.attributes.pop(attr)
+    #                             print("Aggregation type unknown for %s"%attr)
+    #                             continue
+    #                         attr_data_dic[attr] = attr_stat
+    #                     if voxel_str in filled_voxel_dict:
+    #                         filled_voxel_dict[voxel_str][0].append(mean_coord)
+    #                         filled_voxel_dict[voxel_str][1].append(counts[i])
+    #                         filled_voxel_dict[voxel_str][2] += counts[i]
+    #                         for attr in attr_data_dic.keys():
+    #                             filled_voxel_attr_dict[voxel_str][attr].append(attr_data_dic[attr])
+    #                     else:
+    #                         filled_voxel_dict[voxel_str] = [[mean_coord], [counts[i]],counts[i]]
+    #                         filled_voxel_attr_dict[voxel_str] = {}
+    #                         for attr in attr_data_dic.keys():
+    #                             filled_voxel_attr_dict[voxel_str][attr] = [attr_data_dic[attr]]
+    #         out_dic_pts = {}
+    #         out_dic_nr_of_pts = {}
+    #         out_dic_attributes = {}
+    #         for attr in self.attributes.keys():
+    #             out_dic_attributes[attr] = {}
 
-            for key in filled_voxel_dict.keys():
-                out_dic_pts[key] = np.sum(np.array(filled_voxel_dict[key][0]).T/ filled_voxel_dict[key][2] * np.array(filled_voxel_dict[key][1]),axis = 1)
-                out_dic_nr_of_pts[key] = filled_voxel_dict[key][2]
-                for attr in attr_data_dic.keys():
-                    attr_data_at_key = filled_voxel_attr_dict[key][attr]
-                    if self.attributes[attr] == "mode":
-                        out_dic_attributes[attr][key] = stats.mode(attr_data_at_key)[0]
-                    elif self.attributes[attr] == "sum":
-                        out_dic_attributes[attr][key] = np.sum(attr_data_at_key)
-                    elif self.attributes[attr] == "mean":
-                        out_dic_attributes[attr][key] = np.mean(attr_data_at_key)
-                    elif self.attributes[attr] == "median":
-                        out_dic_attributes[attr][key] = np.median(attr_data_at_key)
-                    elif self.attributes[attr] == "min":
-                        out_dic_attributes[attr][key] = np.min(attr_data_at_key)
-                    elif self.attributes[attr] == "max":
-                        out_dic_attributes[attr][key] = np.max(attr_data_at_key)
-                    else:
-                        print("Aggregation type unknown for %s"%attr)
-                        continue
+    #         for key in filled_voxel_dict.keys():
+    #             out_dic_pts[key] = np.sum(np.array(filled_voxel_dict[key][0]).T/ filled_voxel_dict[key][2] * np.array(filled_voxel_dict[key][1]),axis = 1)
+    #             out_dic_nr_of_pts[key] = filled_voxel_dict[key][2]
+    #             for attr in attr_data_dic.keys():
+    #                 attr_data_at_key = filled_voxel_attr_dict[key][attr]
+    #                 if self.attributes[attr] == "mode":
+    #                     out_dic_attributes[attr][key] = stats.mode(attr_data_at_key)[0]
+    #                 elif self.attributes[attr] == "sum":
+    #                     out_dic_attributes[attr][key] = np.sum(attr_data_at_key)
+    #                 elif self.attributes[attr] == "mean":
+    #                     out_dic_attributes[attr][key] = np.mean(attr_data_at_key)
+    #                 elif self.attributes[attr] == "median":
+    #                     out_dic_attributes[attr][key] = np.median(attr_data_at_key)
+    #                 elif self.attributes[attr] == "min":
+    #                     out_dic_attributes[attr][key] = np.min(attr_data_at_key)
+    #                 elif self.attributes[attr] == "max":
+    #                     out_dic_attributes[attr][key] = np.max(attr_data_at_key)
+    #                 else:
+    #                     print("Aggregation type unknown for %s"%attr)
+    #                     continue
 
-            pts = np.array([*out_dic_pts.values()])
-            nr_of_pts = np.array([*out_dic_nr_of_pts.values()])
-            # ints = np.array([*out_dic_ints.values()])
-            # rgbs = np.array([*out_dic_rgbs.values()],dtype = int)
-            combined_data = {'X': pts[:,0], 'Y': pts[:,1], 'Z': pts[:,2],"point_count_subvoxel":nr_of_pts}
-            for attr in out_dic_attributes.keys():
-                combined_data.update({attr:np.array([*out_dic_attributes[attr].values()])})
-            self.df = pd.DataFrame(combined_data)
+    #         pts = np.array([*out_dic_pts.values()])
+    #         nr_of_pts = np.array([*out_dic_nr_of_pts.values()])
+    #         # ints = np.array([*out_dic_ints.values()])
+    #         # rgbs = np.array([*out_dic_rgbs.values()],dtype = int)
+    #         combined_data = {'X': pts[:,0], 'Y': pts[:,1], 'Z': pts[:,2],"point_count_subvoxel":nr_of_pts}
+    #         for attr in out_dic_attributes.keys():
+    #             combined_data.update({attr:np.array([*out_dic_attributes[attr].values()])})
+    #         self.df = pd.DataFrame(combined_data)
                 
                 
                 
-            #     ,"intensity":ints,"red":rgbs[:,0],"green":rgbs[:,1],"blue":rgbs[:,2]})
-            # elif self.intensity:
-            #     self.df = pd.DataFrame({'X': pts[:,0], 'Y': pts[:,1], 'Z': pts[:,2],"point_count_subvoxel":nr_of_pts,"intensity":ints})
-            # elif self.colorized:
-            #     self.df = pd.DataFrame({'X': pts[:,0], 'Y': pts[:,1], 'Z': pts[:,2],"point_count_subvoxel":nr_of_pts,"red":rgbs[:,0],"green":rgbs[:,1],"blue":rgbs[:,2]})
-            # else:
-            #     self.df = pd.DataFrame({'X': pts[:,0], 'Y': pts[:,1], 'Z': pts[:,2],"point_count_subvoxel":nr_of_pts})
+    #         #     ,"intensity":ints,"red":rgbs[:,0],"green":rgbs[:,1],"blue":rgbs[:,2]})
+    #         # elif self.intensity:
+    #         #     self.df = pd.DataFrame({'X': pts[:,0], 'Y': pts[:,1], 'Z': pts[:,2],"point_count_subvoxel":nr_of_pts,"intensity":ints})
+    #         # elif self.colorized:
+    #         #     self.df = pd.DataFrame({'X': pts[:,0], 'Y': pts[:,1], 'Z': pts[:,2],"point_count_subvoxel":nr_of_pts,"red":rgbs[:,0],"green":rgbs[:,1],"blue":rgbs[:,2]})
+    #         # else:
+    #         #     self.df = pd.DataFrame({'X': pts[:,0], 'Y': pts[:,1], 'Z': pts[:,2],"point_count_subvoxel":nr_of_pts})
 
     @trace
     @timeit
