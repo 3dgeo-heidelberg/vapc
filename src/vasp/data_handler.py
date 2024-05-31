@@ -1,5 +1,5 @@
 #For Data Handler:
-import OSToolBox as ost
+# import OSToolBox as ost #add installer info to yml pip install OSToolBox
 import laspy
 import os
 import numpy as np
@@ -45,7 +45,7 @@ class DATA_HANDLER:
                 df_content = {'X': x, 'Y': y, 'Z': z}
                 for rel_attr in list(self.attributes.keys()):
                     if hasattr(las,rel_attr):
-                        df_content[rel_attr] = las[rel_attr]
+                        df_content[rel_attr] = np.array(las[rel_attr])
                     else:
                         print("Could not find %s"%rel_attr)
                 all_data.append(pd.DataFrame(df_content))
