@@ -41,7 +41,7 @@ class DATA_HANDLER:
                 las = lf.read()
                 self.las_header = las.header
                 self.attributes = list(las.points.array.dtype.names)
-                list(map(self.attributes.remove,["X","Y","Z"]))
+                list(map(self.attributes.remove,["X","Y","Z"])) #remove XYZ as xyz should be read directly to not scale and shift the points in an extra step.
                 df = pd.DataFrame(
                                 data = np.array([las.x,las.y,las.z]+[las[attr] for attr in self.attributes]).T,
                                 columns = ["X","Y","Z"]+[attr for attr in self.attributes])
