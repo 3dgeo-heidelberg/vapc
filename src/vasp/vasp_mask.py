@@ -22,8 +22,7 @@ if __name__ == "__main__":
     dh.load_las_files()
     
     vasp_pc = VASP(float(args.mask_voxel_size),
-                    [0,0,0],
-                    {"intensity":"mean"})
+                    [0,0,0])
                     
     vasp_pc.get_data_from_data_handler(dh)
     #Apply offset
@@ -33,8 +32,7 @@ if __name__ == "__main__":
                             
     dh_mask.load_las_files()
     vasp_mask = VASP(float(args.mask_voxel_size),
-                    [0,0,0],
-                    {"intensity":"mean"})
+                    [0,0,0])
     vasp_mask.get_data_from_data_handler(dh_mask)
     #Apply offset
     vasp_mask.compute_reduction_point()
@@ -44,7 +42,7 @@ if __name__ == "__main__":
     vasp_pc.compute_offset()
     vasp_mask.reduction_point = min_reduction_point
     vasp_mask.compute_offset()
-    
+
     #Buffer mask voxelized point cloud
     vasp_mask.compute_voxel_buffer(buffer_size = int(args.buffer_size))
     

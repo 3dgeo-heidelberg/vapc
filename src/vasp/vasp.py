@@ -16,8 +16,8 @@ import sys
 class VASP:
     def __init__(self,
                  voxel_size:float,
-                 origin:list,
-                 attributes:dict,
+                 origin:list = {},
+                 attributes:dict = {},
                  compute:list = [],
                  return_at:str = "center_of_gravity"):
         """
@@ -142,6 +142,17 @@ class VASP:
     #     grouped.rename(columns=self.new_column_names, inplace=True)
     #     self.df = self.df.merge(grouped, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
     #     self.attributes_per_voxel = True
+
+    def update_attribute_dictionary(self):
+        """
+        If not specified, for each attribute the mean will be computed if point cloud is voxelized. If specified, the selected statistic will me computed
+        """
+        attributes = {}
+        for col in self.df.columns:
+            attributes[col] = "mean"
+        for attr in self.attributes.keys:
+            attributes[attr] = self.attributes[attr]
+        self.attributes = attributes
 
     @trace
     @timeit
@@ -348,7 +359,6 @@ class VASP:
         if self.voxelized is False:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-            self.drop_columns += ["hash_index"]
         if vasp_mask.voxelized is False:
             vasp_mask.voxelize()
         if mask_attribute not in self.df.columns:
