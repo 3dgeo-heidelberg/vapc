@@ -35,10 +35,7 @@ def main(config_file):
         )
 
     vasp.compute_requested_attributes()
-    if "mode" in config["attributes"].values() or "mode_count" in str(config["attributes"].values()):
-        vasp.compute_requested_statistics_per_attributes_numpy()
-    else:
-        vasp.compute_requested_statistics_per_attributes() 
+    vasp.compute_requested_statistics_per_attributes() 
     vasp.reduce_to_voxels()
     data_handler.df = vasp.df
     data_handler.save_as_las(
