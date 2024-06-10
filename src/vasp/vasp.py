@@ -52,7 +52,7 @@ class VASP:
         self.geometric_features = False
         self.center_of_gravity = False
         self.distance_to_center_of_gravity = False
-        self.closest_to_center_of_gravity = True
+        self.closest_to_center_of_gravity = False
         self.center_of_voxel = False
         self.corner_of_voxel = False
         self.attributes_per_voxel = False
