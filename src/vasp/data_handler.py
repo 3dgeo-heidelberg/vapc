@@ -1,5 +1,5 @@
 #For Data Handler:
-# import OSToolBox as ost #add installer info to yml pip install OSToolBox
+import OSToolBox as ost #add installer info to yml pip install OSToolBox
 import laspy
 import os
 import numpy as np
@@ -226,14 +226,19 @@ class DATA_HANDLER:
         - shift_to_center (bool): Shift data to origin. Usefull for visualisations in Blender to avoid shifting data.
         """
         
+        if self.df.red.max() > 255 or self.df.green.max() > 255 or self.df.blue.max() > 255:
+            self.df.red = (self.df.red / 65535.0 * 255).astype(np.uint8)
+            self.df.green = (self.df.green / 65535.0 * 255).astype(np.uint8)
+            self.df.blue = (self.df.blue / 65535.0 * 255).astype(np.uint8)
 
         self.voxel_size = voxel_size
-        self.scalars = self.df.columns
-        self.scalars = self.scalars.drop(["X","Y","Z"])
-        try:
-            self.scalars = self.scalars.drop(["red","green","blue"])
-        except:
-            pass
+        # self.scalars = self.df.columns
+        # self.scalars = self.scalars.drop(["X","Y","Z"])
+        
+        # try:
+        #     self.scalars = self.scalars.drop(["red","green","blue"])
+        # except:
+        #     pass
 
         #verts, faces, vert_colors, attributes = self._generate_mesh_data()
         verts, faces = self._generate_mesh_data()
@@ -243,9 +248,15 @@ class DATA_HANDLER:
             min_z = self.df.Z.mean() + self.voxel_size / 2
             min = np.array([min_x, min_y, min_z])
             verts[:,:3] -= np.tile(min, (verts.shape[0], 1))
+        # verts = verts.astype(object)
+        vert_out = []
+        for i,c_ in enumerate(self.df.columns):
+            if self.df.columns[i] == "red" or self.df.columns[i] == "green" or self.df.columns[i] == "blue":
+                vert_out.append(verts[:,i].astype(np.uint8))
+            else:
+                vert_out.append(verts[:,i])
 
-
-        ost.write_ply(filename=outfile, field_list=verts.astype(float), field_names=self.df.columns, triangular_faces=faces)
+        ost.write_ply(filename=outfile, field_list=vert_out, field_names=self.df.columns, triangular_faces=faces)
         
         
     def _addDimensionToLaz(self,

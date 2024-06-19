@@ -19,7 +19,7 @@ class VASP:
                  origin:list = {},
                  attributes:dict = {},
                  compute:list = [],
-                 return_at:str = "center_of_gravity"):
+                 return_at:str = "closest_to_center_of_gravity"):
         """
         VASP [Under construction].
 
@@ -633,7 +633,7 @@ class VASP:
             The center of gravity computed within each voxel containing points ("center_of_gravity") 
         """
         if self.return_at == "center_of_voxel":
-            if self.corner_of_voxel is False:
+            if self.center_of_voxel is False:
                 self.compute_center_of_voxel()
                 self.drop_columns+=["center_x", "center_y", "center_z"]
             self.new_column_names.update({"X":"center_x","Y":"center_y","Z":"center_z"})
@@ -649,7 +649,7 @@ class VASP:
                 self.compute_center_of_gravity()
                 self.drop_columns+=["cog_x", "cog_y", "cog_z"]
             self.new_column_names.update({"X":"cog_x","Y":"cog_y","Z":"cog_z"})
-        
+
         elif self.return_at == "closest_to_center_of_gravity":
             if not self.center_of_gravity:
                 self.compute_center_of_gravity()
@@ -667,6 +667,7 @@ class VASP:
             self.df[col_name] = self.df[self.new_column_names[col_name]]
         self.df = self.df.drop(set(self.drop_columns),axis = 1)
         self.df = self.df.drop_duplicates()
+        self.df = self.df.groupby(['X', 'Y', 'Z'], as_index=False).median()
         self.reduced = True
 
     @trace

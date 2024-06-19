@@ -19,8 +19,7 @@ def main(config_file):
     config_data = open(config_file)
     config = json.load(config_data)
 
-    data_handler = DATA_HANDLER(infiles=config["infiles"],
-                                attributes=config["attributes"])
+    data_handler = DATA_HANDLER(infiles=config["infiles"])
     data_handler.load_las_files()
 
     vasp = VASP(
