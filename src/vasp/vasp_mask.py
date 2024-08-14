@@ -15,7 +15,7 @@ def parse_args():
 
 if __name__ == "__main__":
     #Usage:
-    #python vasp_mask.py "H:\data\vasp_stuff\vasp_mask\data\full_plot.laz" "H:\data\vasp_stuff\vasp_mask\data\full_plot_masked.laz" "H:\data\vasp_stuff\vasp_mask\data\tree_trunks.laz" 1 "true"        
+    #python vasp_mask.py infile outfile maskfile voxel_size buffer_size        
     args = parse_args()
     # laz_file,laz_file_out,mask_file,mask_voxel_size,buffered = args
     dh = DATA_HANDLER(args.laz_file)
