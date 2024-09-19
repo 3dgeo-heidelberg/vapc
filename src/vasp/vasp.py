@@ -297,7 +297,7 @@ class VASP:
     @trace
     @timeit
     def mask_by_voxels(self,
-                     mask_file,
+                     mask_file
                      ):
         if self.big_int_index is False:
             self.compute_big_int_index()
@@ -371,7 +371,8 @@ class VASP:
     @timeit
     def select_by_mask(self,
                      vasp_mask,
-                     mask_attribute = "big_int_index"):
+                     mask_attribute = "big_int_index",
+                     segment_in_or_out = "in"):
         if self.voxelized is False:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
@@ -386,7 +387,13 @@ class VASP:
        
         #mask by attribute
         print("Points before filtering:",self.df.shape)
-        self.df = self.df[self.df[mask_attribute].isin(vasp_mask.df[mask_attribute])]
+        if segment_in_or_out == "in":
+            self.df = self.df[self.df[mask_attribute].isin(vasp_mask.df[mask_attribute])]
+        elif segment_in_or_out == "out":
+            self.df = self.df[~self.df[mask_attribute].isin(vasp_mask.df[mask_attribute])]
+        else:
+            print("Mask either in (keep overlap) our out (remove overlap)")
+            return
         print("Points after filtering:",self.df.shape)
         self.df = self.df.drop(["voxel_x", "voxel_y", "voxel_z",mask_attribute],axis = 1)
 

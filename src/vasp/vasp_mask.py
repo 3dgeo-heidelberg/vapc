@@ -9,6 +9,7 @@ def parse_args():
     parser.add_argument("laz_file", help="laz_file to mask")
     parser.add_argument("laz_file_out", help="laz_file masked output")
     parser.add_argument("mask_file", help="lazmask")
+    parser.add_argument("segment_in_or_out", help="segment inside or outside of 3D mask")
     parser.add_argument("mask_voxel_size", help="voxel_size")
     parser.add_argument("buffer_size", help="number of additional Voxels searched for in each direction.")
     return parser.parse_args()
@@ -47,7 +48,9 @@ if __name__ == "__main__":
     vasp_mask.compute_voxel_buffer(buffer_size = int(args.buffer_size))
     
     #Select by mask
-    vasp_pc.select_by_mask(vasp_mask,"big_int_index")
+    vasp_pc.select_by_mask(vasp_mask,
+                           mask_attribute = "big_int_index",
+                           segment_in_or_out = args.segment_in_or_out)
     #Undo offset
     vasp_pc.compute_offset()
     #Save Point Cloud
