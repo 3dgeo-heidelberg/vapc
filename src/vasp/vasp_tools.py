@@ -42,23 +42,51 @@ def mask(vasp_pc,
     return vasp_pc.df
 
 def subsample(vasp_pc,
-              sub_sample_method = "closest_to_center_of_gravity"):
-    vasp_pc.return_at = sub_sample_method
+              reduce_to = "closest_to_center_of_gravity"):
+    vasp_pc.return_at = reduce_to
     vasp_pc.reduce_to_voxels()
     return vasp_pc.df
 
+def compute_attributes(vasp_pc,
+                       compute,
+                       reduce_to):
+    vasp_pc.compute = compute
+    vasp_pc.compute_requested_attributes()
+    if reduce_to: #check if it should be reduced to voxels
+        vasp_pc.return_at = reduce_to
+        vasp_pc.reduce_to_voxels()
+    return vasp_pc.df
 
-def use_tool(tool_name, infile, outfile, voxel_size, args):
+def use_tool(tool_name, 
+             infile, 
+             outfile, 
+             voxel_size, 
+             args,
+             reduce_to):
+    
     vasp_pc,dh = initiate_vasp(infile,
                 voxel_size,
                 origin = [0,0,0])
 
     if tool_name == "subsample":
         dh.df = subsample(vasp_pc= vasp_pc,
-                  sub_sample_method=args["sub_sample_method"]
+                  reduce_to=args["sub_sample_method"]
                   )
+        
+    elif tool_name == "mask":
+        dh.df = mask(vasp_pc=vasp_pc,
+                     maskfile=args["maskfile"],
+                     segment_in_or_out=args["segment_in_or_out"],
+                     buffer_size=args["buffer_size"])
+        
+    elif tool_name == "compute":
+        dh.df = compute_attributes(vasp_pc = vasp_pc,
+                                   compute = args["compute"],
+                                   reduce_to = reduce_to)
+
+        pass
+
     else:
         return "unknown command:%s"%tool_name
-    
     dh.save_as_las(outfile)
     

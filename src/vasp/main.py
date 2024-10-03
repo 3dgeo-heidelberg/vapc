@@ -43,11 +43,14 @@ def do_vasp_on_files(file,
                             buffer= (voxel_size/2))
 
         for tile in all_tiles:
+            if tile == False:
+                continue
             use_tool(vasp_command["tool"],
                      tile,
                      tile,
                      voxel_size=voxel_size,
-                     args=vasp_command["args"])
+                     args=vasp_command["args"],
+                     reduce_to = vasp_command["reduce_to"])
 
         tiles_without_buffer =  las_remove_buffer(tile_dir)
 
@@ -81,16 +84,56 @@ def do_vasp_on_files(file,
         return True
     
 
-file = r"C:\Users\ronny\repos\vasp\tests\test_data\vasp_in.laz"
-outdir = r"C:\Users\ronny\repos\vasp\tests\test_data"
 
-do_vasp_on_files(file=file,
-                 out_dir=outdir,
-                 voxel_size=1,
-                 vasp_command={"tool":"subsample",
-                                "args":{"sub_sample_method":"closest_to_center_of_gravity"}},
-                 tile = 5,
-                 reduce_to="closest_to_center_of_gravity"
+# ##subsampling:
+# config = {  "infile":r"C:\Users\ronny\repos\vasp\tests\test_data\vasp_in.laz",
+#             "outdir":r"C:\Users\ronny\repos\vasp\tests\test_data",
+#             "voxel_size":1,
+#             "vasp_command":{
+#                 "tool":"subsample",
+#                 "args":{"sub_sample_method":"closest_to_center_of_gravity"}
+#                 },
+#             "tile":5,
+#             "reduce_to":False
+#           }
+
+
+
+# ##masking:
+# config = {  "infile":r"C:\Users\ronny\repos\vasp\tests\test_data\vasp_in.laz",
+#             "outdir":r"C:\Users\ronny\repos\vasp\tests\test_data",
+#             "voxel_size":0.2,
+#             "vasp_command":{
+#                 "tool":"mask",
+#                 "args":{
+#                     "maskfile":r"C:\Users\ronny\repos\vasp\tests\test_data\subsample_2024_10_03_22-27-27.laz",
+#                     "segment_in_or_out":"in",
+#                     "buffer_size":0}
+#                 },
+#             "tile":5,
+#             "reduce_to":False
+#           }
+
+##compute voxel attributes:
+config = {  "infile":r"C:\Users\ronny\repos\vasp\tests\test_data\vasp_in.laz",
+            "outdir":r"C:\Users\ronny\repos\vasp\tests\test_data",
+            "voxel_size":0.2,
+            "vasp_command":{
+                "tool":"compute",
+                "args":{
+                    "compute":["geometric_features",
+                                  "point_count"]}
+                },
+            "tile":2,
+            "reduce_to":"center_of_voxel"
+          }
+
+do_vasp_on_files(file=config["infile"],
+                 out_dir=config["outdir"],
+                 voxel_size=config["voxel_size"],
+                 vasp_command=config["vasp_command"],
+                 tile = config["tile"],
+                 reduce_to=config["reduce_to"]
                  )
 
 

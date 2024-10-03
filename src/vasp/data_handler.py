@@ -32,7 +32,7 @@ class DATA_HANDLER:
 
         all_data = []
         print(self.files)
-        if type(self.files) is str:
+        if type(self.files) != list:
             self.files = [self.files]
 
         for filepath in self.files:

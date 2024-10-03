@@ -24,6 +24,7 @@ def las_create_or_append(fh, las, mask, tile_name):
         lasTile.points = las.points[mask]
         lasTile.write(tile_name)
         print("Created file:\t\t", tile_name)
+    return tile_name
 
 def las_merge(filepaths,
               outfile):
@@ -107,10 +108,10 @@ def las_create_3DTiles(lazfile,
     write_tile_for_lasfile = partial(las_create_or_append, fh, las)
 
     #Clip point clouds
+    existing_tiles = []
     for mask, tile_name in zip(masks,tile_names):
-        write_tile_for_lasfile(mask,tile_name)
-
-    return tile_names
+        existing_tiles.append(write_tile_for_lasfile(mask,tile_name))
+    return np.unique(list(filter((False).__ne__, existing_tiles))) #removing false entries
 
 def clip_to_bbox(laz_in,
                  laz_out,
