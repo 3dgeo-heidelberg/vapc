@@ -4,7 +4,7 @@ from vasp_tools import *
 from las_split_append_merge import *
 import datetime
 import json
-
+import argparse
 
 VASP_VERSION = "0.0.0.1"
 
@@ -42,12 +42,12 @@ def do_vasp_on_files(file,
                             tilename="temptile",
                             buffer= (voxel_size/2))
 
-        for tile in all_tiles:
-            if tile == False:
+        for sub_tile in all_tiles:
+            if sub_tile == False:
                 continue
             use_tool(vasp_command["tool"],
-                     tile,
-                     tile,
+                     sub_tile,
+                     sub_tile,
                      voxel_size=voxel_size,
                      args=vasp_command["args"],
                      reduce_to = vasp_command["reduce_to"])
@@ -62,7 +62,12 @@ def do_vasp_on_files(file,
         os.rmdir(tile_dir)        
     #work without tiles
     else:
-        pass
+        use_tool(vasp_command["tool"],
+                 file,
+                 outfile,
+                 voxel_size=voxel_size,
+                 args=vasp_command["args"],
+                 reduce_to = vasp_command["reduce_to"])
 
     #save configuration for documentation
     with open(outconfig, 'w') as cfg:
@@ -82,83 +87,32 @@ def do_vasp_on_files(file,
         #XXX implement converter here
         os.remove(outfile)
         return True
-    
 
 
-# ##subsampling:
-# config = {  "infile":r"C:\Users\ronny\repos\vasp\tests\test_data\vasp_in.laz",
-#             "outdir":r"C:\Users\ronny\repos\vasp\tests\test_data",
-#             "voxel_size":1,
-#             "vasp_command":{
-#                 "tool":"subsample",
-#                 "args":{"sub_sample_method":"closest_to_center_of_gravity"}
-#                 },
-#             "tile":5,
-#             "reduce_to":False
-#           }
+def parse_args():
+    parser = argparse.ArgumentParser(description="Use VASP.")
+    parser.add_argument("config_file", help="Configuration of the VASP command")
+    return parser.parse_args()
 
+def load_config(config_file):
+    with open(config_file, 'r') as file:
+        return json.load(file)
 
+if __name__ == "__main__":
+    #Example usage:
+    #python src/vasp/main.py config_file.json
+     
+    # Get input 
+    args = parse_args()
 
-# ##masking:
-# config = {  "infile":r"C:\Users\ronny\repos\vasp\tests\test_data\vasp_in.laz",
-#             "outdir":r"C:\Users\ronny\repos\vasp\tests\test_data",
-#             "voxel_size":0.2,
-#             "vasp_command":{
-#                 "tool":"mask",
-#                 "args":{
-#                     "maskfile":r"C:\Users\ronny\repos\vasp\tests\test_data\subsample_2024_10_03_22-27-27.laz",
-#                     "segment_in_or_out":"in",
-#                     "buffer_size":0}
-#                 },
-#             "tile":5,
-#             "reduce_to":False
-#           }
+    # Load json
+    config = load_config(args.config_file)
 
-##compute voxel attributes:
-config = {  "infile":r"C:\Users\ronny\repos\vasp\tests\test_data\vasp_in.laz",
-            "outdir":r"C:\Users\ronny\repos\vasp\tests\test_data",
-            "voxel_size":0.2,
-            "vasp_command":{
-                "tool":"compute",
-                "args":{
-                    "compute":["geometric_features",
-                                  "point_count"]}
-                },
-            "tile":2,
-            "reduce_to":"center_of_voxel"
-          }
-
-do_vasp_on_files(file=config["infile"],
-                 out_dir=config["outdir"],
-                 voxel_size=config["voxel_size"],
-                 vasp_command=config["vasp_command"],
-                 tile = config["tile"],
-                 reduce_to=config["reduce_to"]
-                 )
-
-
-# do_vasp_on_files(files = [tree.laz], 
-#                 out_dir = "./outfolder",
-#                 voxel_size = 1,
-#                 vasp_commands = [
-#                         {"tool":"vasp_mask.py", 
-#                         "mask_file": "mask.laz",
-#                         "buffer_size":0.5},
-#                         {"tool":"vasp_geom_feature.py"}
-#                         ],
-#                 tile = 10)
-
-
-
-# test_in = r"C:\Users\ronny\repos\vasp\tests\test_data\vasp_in.laz"
-# test_out = r"C:\Users\ronny\repos\vasp\tests\test_data\tiles"
-
-# tilesize = 2.1
-# voxel_size = 0.5
-# las_create_3DTiles(test_in,
-#     test_out,
-#     tilesize,
-#     tilename = "3DTile",
-#     buffer = voxel_size*.5)
-
-# las_remove_buffer(test_out)
+    # Apply command
+    do_vasp_on_files(file=config["infile"],
+                    out_dir=config["outdir"],
+                    voxel_size=config["voxel_size"],
+                    vasp_command=config["vasp_command"],
+                    tile = config["tile"],
+                    reduce_to=config["reduce_to"]
+                    )

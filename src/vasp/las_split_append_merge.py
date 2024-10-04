@@ -48,13 +48,12 @@ def laSZ_to_laSZ(lasfile,lazfile):
         las = lasf.read()
         las.write(lazfile)
 
-
-
 def las_create_3DTiles(lazfile,
     outDir,
     tilesize,
     tilename = "",
-    buffer = 0):
+    buffer = 0,
+    chunk_wise = False):
     """ 
     reads a laz File. 
     calculates the boundaries of the tiles that are defined by the tilesize. Tiles start from the lowest x and y value.
@@ -70,6 +69,7 @@ def las_create_3DTiles(lazfile,
         y_max = np.ceil(extent[4])
         z_min = np.floor(extent[2])
         z_max = np.ceil(extent[5])
+    print("Opened file")
     #Find number of Tiles for x and y direction
     diffX = x_max - x_min
     diffY = y_max - y_min
@@ -105,6 +105,7 @@ def las_create_3DTiles(lazfile,
 
                 tile_names.append(outTile)
                 masks.append(mask_all)
+    print("Created masks")
     write_tile_for_lasfile = partial(las_create_or_append, fh, las)
 
     #Clip point clouds

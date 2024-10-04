@@ -57,6 +57,78 @@ def compute_attributes(vasp_pc,
         vasp_pc.reduce_to_voxels()
     return vasp_pc.df
 
+def filter_by_attributes(
+        vasp_pc,
+        filters,
+        reduce_to):
+
+    #Compute filter attributes
+    vasp_pc.compute = list(filters.keys())
+    vasp_pc.compute_requested_attributes()
+    #Filter attribute
+    for fa in filters.keys():
+        filter_attribute = filters[fa]
+        for filter_condition in filter_attribute.keys():
+            if filter_condition == "equal":
+                vasp_pc.filter_attributes(
+                            fa,
+                            "eq",
+                            filter_attribute[filter_condition],
+                            )
+            elif filter_condition == "bigger_equal":
+                vasp_pc.filter_attributes(
+                            fa,
+                            "min_eq",
+                            filter_attribute[filter_condition],
+                            )
+            elif filter_condition == "bigger":
+                vasp_pc.filter_attributes(
+                            fa,
+                            "min",
+                            filter_attribute[filter_condition],
+                            )
+            elif filter_condition == "smaller_equal":
+                vasp_pc.filter_attributes(
+                            fa,
+                            "max_eq",
+                            filter_attribute[filter_condition],
+                            )
+            elif filter_condition == "smaller":
+                vasp_pc.filter_attributes(
+                            fa,
+                            "max",
+                            filter_attribute[filter_condition],
+                            )
+            else:
+                return False
+    if reduce_to: #check if it should be reduced to voxels
+        vasp_pc.return_at = reduce_to
+        vasp_pc.reduce_to_voxels()
+    return vasp_pc.df
+
+
+def filter_by_attributes_and_compute(
+        vasp_pc,
+        filters,
+        compute,
+        reduce_to):
+    #Lets filter first
+    vasp_pc.df = filter_by_attributes(
+        vasp_pc,
+        filters,
+        reduce_to = False)
+    
+    #Prevent multiple computations of the same attribute:
+    for filter_attr in filters.keys():
+        compute = list(filter((filter_attr).__ne__, compute))
+    
+    #And compute attributes after
+    return compute_attributes(vasp_pc,
+                       compute,
+                       reduce_to)
+
+
+
 def use_tool(tool_name, 
              infile, 
              outfile, 
@@ -81,6 +153,15 @@ def use_tool(tool_name,
         
     elif tool_name == "compute":
         dh.df = compute_attributes(vasp_pc = vasp_pc,
+                                   compute = args["compute"],
+                                   reduce_to = reduce_to)
+    elif tool_name == "filter":
+        dh.df = filter_by_attributes(vasp_pc = vasp_pc,
+                                   filters = args["filters"],
+                                   reduce_to = reduce_to)
+    elif tool_name == "filter_and_compute":
+        dh.df = filter_by_attributes_and_compute(vasp_pc = vasp_pc,
+                                   filters = args["filters"],
                                    compute = args["compute"],
                                    reduce_to = reduce_to)
 

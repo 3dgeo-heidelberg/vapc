@@ -574,7 +574,7 @@ class VASP:
         grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"])
         cov_df = grouped.apply(_covariance)
         col_names = ["cov_xx", "cov_xy", "cov_xz", "cov_yx", "cov_yy", "cov_yz", "cov_zx", "cov_zy", "cov_zz"]
-        covariance_df = pd.DataFrame(cov_df.tolist(), index=cov_df.index, columns=col_names).reset_index()
+        covariance_df = pd.DataFrame(cov_df.values.tolist(), index=cov_df.index, columns=col_names).reset_index()
         self.df = self.df.merge(covariance_df, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
         self.covariance_matrix = True
 
@@ -602,7 +602,7 @@ class VASP:
         grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"])
         eig_df = grouped.apply(_eigenvalues)
         col_names = ["Eigenvalue_1", "Eigenvalue_2","Eigenvalue_3"]
-        eigenvalue_df = pd.DataFrame(eig_df.tolist(), index=eig_df.index, columns=col_names).reset_index()
+        eigenvalue_df = pd.DataFrame(eig_df.values.tolist(), index=eig_df.index, columns=col_names).reset_index()
         self.df = self.df.merge(eigenvalue_df, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
         self.eigenvalues = True
 
