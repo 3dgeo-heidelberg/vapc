@@ -225,11 +225,11 @@ class DATA_HANDLER:
         - voxel_size (float): Edgelength of the voxels will be created with.
         - shift_to_center (bool): Shift data to origin. Usefull for visualisations in Blender to avoid shifting data.
         """
-        
-        if self.df.red.max() > 255 or self.df.green.max() > 255 or self.df.blue.max() > 255:
-            self.df.red = (self.df.red / 65535.0 * 255).astype(np.uint8)
-            self.df.green = (self.df.green / 65535.0 * 255).astype(np.uint8)
-            self.df.blue = (self.df.blue / 65535.0 * 255).astype(np.uint8)
+        if "red" in self.df.columns and "green" in self.df.columns and "blue" in self.df.columns:
+            if self.df.red.max() > 255 or self.df.green.max() > 255 or self.df.blue.max() > 255:
+                self.df.red = (self.df.red / 65535.0 * 255).astype(np.uint8)
+                self.df.green = (self.df.green / 65535.0 * 255).astype(np.uint8)
+                self.df.blue = (self.df.blue / 65535.0 * 255).astype(np.uint8)
 
         self.voxel_size = voxel_size
         # self.scalars = self.df.columns

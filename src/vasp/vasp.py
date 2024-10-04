@@ -183,6 +183,7 @@ class VASP:
             - Min
             - Max
             - Sum
+            - mode_count
         """
 
         if self.voxelized is False:
@@ -210,10 +211,12 @@ class VASP:
             if not type(self.attributes[attr]) is list:
                 self.attributes[attr] = [self.attributes[attr]]
             for enum,stat_request in enumerate(self.attributes[attr]):
-                if stat_request == "mode_count":
-                    percentage = float(self.attributes[attr].split(",")[-1])
+                if "mode_count" in stat_request:
+                    print(self.attributes[attr])
+                    percentage = float(stat_request.split(",")[-1])
                     start = time.time()
                     sorted_data_attr = sorted_data[attr]
+                    sorted_data_attr = np.array(sorted_data_attr, dtype=int)
                     split_arr = np.array_split(sorted_data_attr, indices[1:])
                     bc = list(map(np.bincount, split_arr))
                     bc_sum = list(map(sum, bc))

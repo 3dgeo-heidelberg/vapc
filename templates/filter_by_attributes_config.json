@@ -1,5 +1,5 @@
 {
-    "infile":"./tests/test_data/vasp_in.las",
+    "infile":"./tests/test_data/vasp_in.laz",
     "outdir":"./tests/test_data",
     "voxel_size":1,
     "vasp_command":{

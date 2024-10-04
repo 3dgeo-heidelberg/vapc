@@ -127,6 +127,18 @@ def filter_by_attributes_and_compute(
                        compute,
                        reduce_to)
 
+def compute_statistics(
+        vasp_pc,
+        statistics,
+        reduce_to):
+    vasp_pc.attributes = statistics
+    vasp_pc.compute_requested_statistics_per_attributes()
+    if reduce_to: #check if it should be reduced to voxels
+        vasp_pc.return_at = reduce_to
+        vasp_pc.reduce_to_voxels()
+    return vasp_pc.df
+        
+
 
 
 def use_tool(tool_name, 
@@ -155,18 +167,21 @@ def use_tool(tool_name,
         dh.df = compute_attributes(vasp_pc = vasp_pc,
                                    compute = args["compute"],
                                    reduce_to = reduce_to)
+        
     elif tool_name == "filter":
         dh.df = filter_by_attributes(vasp_pc = vasp_pc,
                                    filters = args["filters"],
                                    reduce_to = reduce_to)
+        
     elif tool_name == "filter_and_compute":
         dh.df = filter_by_attributes_and_compute(vasp_pc = vasp_pc,
                                    filters = args["filters"],
                                    compute = args["compute"],
                                    reduce_to = reduce_to)
-
-        pass
-
+    elif tool_name == "statistics":
+        dh.df = compute_statistics(vasp_pc = vasp_pc,
+                                   statistics = args["statistics"],
+                                   reduce_to = reduce_to)
     else:
         return "unknown command:%s"%tool_name
     dh.save_as_las(outfile)
