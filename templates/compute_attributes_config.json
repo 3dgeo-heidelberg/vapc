@@ -1,0 +1,27 @@
+{  
+    "infile":"./tests/test_data/vasp_in.laz",
+    "outdir":"./tests/test_data",
+    "voxel_size":0.2,
+    "vasp_command":{
+        "tool":"compute",
+        "args":{
+            "compute":[
+                "big_int_index",
+                "hash_index",
+                "point_density",
+                "point_count",
+                "percentage_occupied",
+                "covariance_matrix",
+                "eigenvalues",
+                "geometric_features",
+                "center_of_gravity",
+                "distance_to_center_of_gravity",
+                "std_of_cog",
+                "closest_to_center_of_gravity",
+                "center_of_voxel",
+                "corner_of_voxel"]
+            }
+        },
+    "tile":2,
+    "reduce_to":"center_of_voxel"
+}

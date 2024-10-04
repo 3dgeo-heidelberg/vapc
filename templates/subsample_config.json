@@ -1,0 +1,13 @@
+{
+    "infile":"./tests/test_data/vasp_in.laz",
+    "outdir":"./tests/test_data",
+    "voxel_size":0.65,
+    "vasp_command":{
+        "tool":"subsample",
+        "args":{
+            "sub_sample_method":"closest_to_center_of_gravity"
+            }
+        },
+    "tile":5,
+    "reduce_to":false
+}
