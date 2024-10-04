@@ -12,5 +12,6 @@
                 }
         },
     "tile":5,
-    "reduce_to":false
+    "reduce_to":false,
+    "save_as":".laz"
 }

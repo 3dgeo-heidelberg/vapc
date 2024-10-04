@@ -171,3 +171,12 @@ def use_tool(tool_name,
         return "unknown command:%s"%tool_name
     dh.save_as_las(outfile)
     
+def laSZ_to_ply(infile,
+                outfile,
+                voxel_size,
+                shift_to_center = False):
+    dh = DATA_HANDLER(infile)
+    dh.load_las_files()
+    dh.save_as_ply(outfile=outfile,
+                   voxel_size=voxel_size,
+                   shift_to_center=shift_to_center)

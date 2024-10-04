@@ -1,5 +1,5 @@
 #For Data Handler:
-# import OSToolBox as ost #add installer info to yml pip install OSToolBox
+import OSToolBox as ost #add installer info to yml pip install OSToolBox
 import laspy
 import os
 import numpy as np

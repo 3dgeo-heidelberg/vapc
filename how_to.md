@@ -8,8 +8,11 @@
   <a href="#how-to-mesh">Meshing</a>
 </p>
 
+
+
 # Structure
-Vasp is divided into two parts. The data handler and the vasp computation part.
+VASP can be used by calling the main.py and providing a config (.json) file.
+The fundamental structure of VASP is divided into two parts. The data handler and the vasp computation part. 
 ## The data handler
 is an addition for easy reading and saving of data. It always reads a list of point clouds and saves them as a single dataframe. This enables the merging of multiple datasets. Whenever save is called from the data handler, the dataframe currently stored in it is saved. So here the workflow would be:
 * Initiate the data handler
@@ -18,21 +21,10 @@ is an addition for easy reading and saving of data. It always reads a list of po
 * Return dataframe after computations back to data handler
 * Call save from data handler  
 
-Required parameters for the data handler are set like this:
-
-```json
-"infiles":["v2_vasp/test_data/vasp_in.laz"],
-"outfile":"v2_vasp/test_data/vasp_out.laz"
-```
-
 
 ## VASP...
 is used to compute statistics of existing attributes and compute new attribute. This takes place in a voxel space where the voxel size ("voxel_size") and the origin of the voxel space have to be defined ("origin").
 
-```json
-"voxel_size":1.0,
-"origin":[0,0,0]
-```
 ### For the computation of statistics for existing attributes
 the following methods are currently implemented:
 * min
@@ -40,14 +32,10 @@ the following methods are currently implemented:
 * median
 * max
 * sum
-* mode*
+* mode
 
 Where the respective value within each voxel will be computed for any attribute. If the mean intensity should be calculated, this can be requested by writing the following into the config file:
-```json
-"attributes":{
-    "intensity":"mean"
-    }
-```
+
 Similar the mean intensity and the mode for the hitObjectId (e.g. for VLS data) can be computed by this:
 
 ```json
@@ -56,8 +44,6 @@ Similar the mean intensity and the mode for the hitObjectId (e.g. for VLS data) 
     "hitObjectId":"mode"
     }
 ```
-*Warning: mode is currently only implemented with a significantly slower method. This is an open issue and will be fixed.
-
 
 ### For the computation of new attributes
 the following options exist:

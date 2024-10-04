@@ -1,9 +1,9 @@
 {
     "infile":"./tests/test_data/vasp_in.las",
     "outdir":"./tests/test_data",
-    "voxel_size":1,
+    "voxel_size":0.001,
     "vasp_command":{
-        "tool":"filter",
+        "tool":"statistics",
         "args":{
             "filters":{
                 "point_count":{

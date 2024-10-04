@@ -5,9 +5,12 @@ from las_split_append_merge import *
 import datetime
 import json
 import argparse
+from utilities import *
 
 VASP_VERSION = "0.0.0.1"
 
+@trace
+@timeit
 def do_vasp_on_files(file, 
                 out_dir,
                 voxel_size, 
@@ -84,7 +87,10 @@ def do_vasp_on_files(file,
         return True
     if save_as == ".ply":
         ply_out = outfile[:-4]+".ply"
-        #XXX implement converter here
+        laSZ_to_ply(infile=outfile,
+                    outfile=ply_out,
+                    voxel_size=voxel_size,
+                    shift_to_center=False)
         os.remove(outfile)
         return True
 
@@ -114,5 +120,6 @@ if __name__ == "__main__":
                     voxel_size=config["voxel_size"],
                     vasp_command=config["vasp_command"],
                     tile = config["tile"],
-                    reduce_to=config["reduce_to"]
+                    reduce_to=config["reduce_to"],
+                    save_as=config["save_as"]
                     )
