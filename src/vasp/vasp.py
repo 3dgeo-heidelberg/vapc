@@ -5,8 +5,8 @@ from scipy import stats
 from scipy.spatial import KDTree
 import pandas as pd
 # import pandasql as ps
-from utilities import trace,timeit
-from data_handler import DATA_HANDLER
+from .utilities import trace,timeit
+from .data_handler import DATA_HANDLER
 from itertools import combinations
 import time
 import sys

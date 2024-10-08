@@ -1,11 +1,9 @@
-from data_handler import DATA_HANDLER
-from vasp import VASP
-from vasp_tools import *
-from las_split_append_merge import *
+from vasp.vasp_tools import *
+from vasp.las_split_append_merge import *
 import datetime
 import json
 import argparse
-from utilities import *
+from vasp.utilities import *
 
 VASP_VERSION = "0.0.0.1"
 
@@ -39,7 +37,15 @@ def do_vasp_on_files(file,
         tile_dir = os.path.join(out_dir,"temp_tiles")
         if not os.path.isdir(tile_dir):
             os.mkdir(tile_dir)
-        all_tiles = las_create_3DTiles(lazfile = file,
+        inlas = os.path.join(out_dir,"merged_las.las")
+        del_inlas = False
+        if type(file) == list:
+            las_merge(file,
+                        inlas)
+            del_inlas = True
+        else:
+            inlas = file
+        all_tiles = las_create_3DTiles(lazfile = inlas,
                             outDir=tile_dir,
                             tilesize= tile,
                             tilename="temptile",
@@ -60,8 +66,10 @@ def do_vasp_on_files(file,
         las_merge(filepaths=    tiles_without_buffer,
                   outfile=      outfile)
         
-        for file in tiles_without_buffer:
-            os.remove(file)
+        for two in tiles_without_buffer:
+            os.remove(two)
+        if del_inlas:
+            os.remove(inlas)
         os.rmdir(tile_dir)        
     #work without tiles
     else:
@@ -104,10 +112,7 @@ def load_config(config_file):
     with open(config_file, 'r') as file:
         return json.load(file)
 
-if __name__ == "__main__":
-    #Example usage:
-    #python src/vasp/main.py config_file.json
-     
+def main():
     # Get input 
     args = parse_args()
 
@@ -123,3 +128,7 @@ if __name__ == "__main__":
                     reduce_to=config["reduce_to"],
                     save_as=config["save_as"]
                     )
+
+
+if __name__ == "__main__":
+    main()

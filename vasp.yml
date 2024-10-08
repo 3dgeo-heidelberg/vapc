@@ -9,3 +9,5 @@ dependencies:
   - scipy>=1.11.3
   - pip:
     - laspy[laszip]>=2.3.0
+    - plyfile
+

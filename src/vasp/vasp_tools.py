@@ -1,5 +1,5 @@
-from vasp import VASP
-from data_handler import DATA_HANDLER
+from .vasp import VASP
+from .data_handler import DATA_HANDLER
 
 def initiate_vasp(lazfile,
                   voxel_size,

@@ -2,14 +2,13 @@
 {
     "infile":"./tests/test_data/vasp_in.laz",
     "outdir":"./tests/test_data",
-    "voxel_size":0.5,
+    "voxel_size":0.05,
     "vasp_command":{
         "tool":"filter_and_compute",
         "args":{
             "filters":{
                 "point_count":{
-                    "bigger":5,
-                    "smaller_equal":1000}
+                    "bigger":5}
                 },
             "compute":[
                 "big_int_index",
@@ -28,6 +27,7 @@
                 "corner_of_voxel"]
             }
         },
-    "tile":5,
-    "reduce_to":"closest_to_center_of_gravity"
+    "tile":false,
+    "reduce_to":"closest_to_center_of_gravity",
+    "save_as":".ply"
 }
