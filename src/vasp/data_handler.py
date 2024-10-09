@@ -59,19 +59,33 @@ class DATA_HANDLER:
                     outfile:str,
                     las_point_format = 6,
                     las_version = "1.4",
-                    las_scales = [0.00025,0.00025,0.00025],
+                    las_scales = None,
+                    las_offset = None
                     ):
         """
-        Function used to save data stored in the dataframe at an given path.
+        Saves the data stored in the DataFrame to a LAS file at the given path.
 
         Parameters:
-        - outfile (str): Path where laz file is stored.
+        - outfile (str): Path where the LAS or LAZ file will be stored.
+        - las_point_format (int, optional): Point format for the LAS file (default is 6).
+        - las_version (str, optional): LAS file version (default is "1.4").
+        - las_scales (list of float, optional): Scale factors for X, Y, Z (default is [0.00025, 0.00025, 0.00025]).
+        - las_offset (list of float, optional): Offset values for X, Y, Z (default is [X.min(), Y.min(), Z.min()]).
         """
+        if not hasattr(self, 'df'):
+            raise AttributeError("DataFrame not found. Please load data before saving.")
+        if las_scales is None:
+            las_scales = [0.00025, 0.00025, 0.00025]
+        if las_offset is None:
+            las_offset = [self.df["X"].min(), self.df["Y"].min(), self.df["Z"].min()]
+        
         if not hasattr(self, 'las_header'):
             new_header = laspy.LasHeader(point_format = las_point_format,version = las_version)
-            new_header.offsets = [self.df["X"].mean(),self.df["Y"].mean(),self.df["Z"].mean()]
+            new_header.offsets = las_offset
             new_header.scales = las_scales
-            # raise ValueError("LAS header not found. Ensure a LAS file has been read.")
+        else:
+            new_header = self.las_header
+
         self.lasFile = laspy.LasData(new_header)
         self.lasFile.x = self.df["X"]
         self.lasFile.y = self.df["Y"]
@@ -79,16 +93,20 @@ class DATA_HANDLER:
         #for VLS data...
         try:
             self.lasFile.remove_extra_dims(["ExtraBytes"])
-        except:
-            pass
+        except KeyError:
+            pass  # 'ExtraBytes' dimension does not exist
         # Add other attributes to output:
         for name in self.df.columns:
             if name not in ["X", "Y", "Z"]:
                 try:
                     self.lasFile[name] = self.df[name]
-                except Exception as e:
-                    self._addDimensionToLaz(self.df[name].astype(np.float32),name)
+
+                except AttributeError:
+                    self._addDimensionToLaz(self.df[name].astype(np.float32), name)
                     print("Adding new dimension %s"%name)
+                except Exception as e:
+                    print("Error adding dimension %s"%name)
+                    raise
         self.lasFile.write(outfile)
         
     def _addDimensionToLaz(self,
@@ -97,12 +115,17 @@ class DATA_HANDLER:
         """
         Write new attribute to laz file.
         """
+        name = self._sanitize_name(name)
         self.lasFile.add_extra_dim(laspy.ExtraBytesParams(
         name=name,
         type=array.dtype,
         description=name
         ))
         self.lasFile[name] = array
+
+    def _sanitize_name(self,name):
+        return name[:32]  # LAS specification may limit names to 32 characters
+
 
 
     # @trace
