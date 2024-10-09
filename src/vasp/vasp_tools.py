@@ -36,7 +36,7 @@ def mask(vasp_pc,
     vasp_mask.compute_voxel_buffer(buffer_size = int(buffer_size))
     #Select by mask
     vasp_pc.select_by_mask(vasp_mask,
-                           mask_attribute = "big_int_index",
+                           mask_attribute = "voxel_index",
                            segment_in_or_out = segment_in_or_out)
     #Undo offset
     vasp_pc.compute_offset()

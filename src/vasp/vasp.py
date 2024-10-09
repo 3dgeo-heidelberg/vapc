@@ -14,6 +14,22 @@ import sys
 
 
 class VASP:
+    AVAILABLE_COMPUTATIONS = [
+        "big_int_index",
+        "hash_index",
+        "point_count",
+        "point_density",
+        "percentage_occupied",
+        "covariance_matrix",
+        "eigenvalues",
+        "geometric_features",
+        "center_of_gravity",
+        "distance_to_center_of_gravity",
+        "std_of_cog",
+        "closest_to_center_of_gravity",
+        "center_of_voxel",
+        "corner_of_voxel"
+    ]
     def __init__(self,
              voxel_size: float,
              origin: list = None,
@@ -50,11 +66,38 @@ class VASP:
         self.attributes = attributes if attributes is not None else {}
         self.compute = compute if compute is not None else []
         self.return_at = return_at
+        
+
+        #Validate some parameters
+        if self.voxel_size <= 0: #check voxel size
+            raise ValueError("voxel_size must be a positive number.")
+        if not isinstance(self.origin, list) or len(self.origin) != 3: #check origin
+            raise ValueError("origin must be a list of three coordinates [x, y, z].")
+        
+        self.AVAILABLE_COMPUTATIONS = [
+            "big_int_index",
+            "hash_index",
+            "voxel_index",
+            "point_count",
+            "point_density",
+            "percentage_occupied",
+            "covariance_matrix",
+            "eigenvalues",
+            "geometric_features",
+            "center_of_gravity",
+            "distance_to_center_of_gravity",
+            "std_of_cog",
+            "closest_to_center_of_gravity",
+            "center_of_voxel",
+            "corner_of_voxel"
+        ]
+
         #Calculations not applied yet:
         self.attributes_up_to_data = False
         self.voxelized = False
         self.big_int_index = False
         self.hash_index = False
+        self.voxel_index = False
         self.point_count = False
         self.point_density = False
         self.percentage_occupied = False
@@ -63,6 +106,7 @@ class VASP:
         self.geometric_features = False
         self.center_of_gravity = False
         self.distance_to_center_of_gravity = False
+        self.std_of_cog = False
         self.closest_to_center_of_gravity = False
         self.center_of_voxel = False
         self.corner_of_voxel = False
@@ -72,12 +116,20 @@ class VASP:
         self.reduced = False
         self.reduction_point = None
         self.offset_applied = False
-        
-        if self.voxel_size <= 0:
-            raise ValueError("voxel_size must be a positive number.")
-        if not isinstance(self.origin, list) or len(self.origin) != 3:
-            raise ValueError("origin must be a list of three coordinates [x, y, z].")
 
+    def _validate_compute_list(self):
+        """
+        Validates the 'compute' list to ensure all computations are valid.
+
+        Raises
+        ------
+        ValueError
+            If any computation in 'self.compute' is not in 'self.AVAILABLE_COMPUTATIONS'.
+        """
+        invalid_computations = [comp for comp in self.compute if comp not in self.AVAILABLE_COMPUTATIONS]
+        if invalid_computations:
+            raise ValueError(f"Invalid computation(s) requested: {invalid_computations}. "
+                             f"Available computations are: {self.AVAILABLE_COMPUTATIONS}")
 
 
     @trace
@@ -155,35 +207,136 @@ class VASP:
 
         self.voxelized = True
 
+    # @trace
+    # @timeit
+    # def compute_requested_attributes_old(self):
+    #     """
+    #     Computes attributes based on the 'compute' input list.
+
+    #     This method iterates over the list of computations specified in `self.compute` and calls
+    #     the corresponding methods to compute various attributes of the voxel data.
+
+    #     The available computations are:
+    #         - "big_int_index"
+    #         - "hash_index"
+    #         - "point_count"
+    #         - "point_density"
+    #         - "percentage_occupied"
+    #         - "covariance_matrix"
+    #         - "eigenvalues"
+    #         - "geometric_features"
+    #         - "center_of_gravity"
+    #         - "distance_to_center_of_gravity"
+    #         - "std_of_cog"
+    #         - "closest_to_center_of_gravity"
+    #         - "center_of_voxel"
+    #         - "corner_of_voxel"
+
+    #     Raises:
+    #         ValueError: If an invalid computation name is provided in `self.compute`.
+    #         Exception: If any computation method raises an exception.
+    #     """
+    #     # Mapping of computation names to methods
+    #     computations = {
+    #         "big_int_index": self.compute_big_int_index,
+    #         "hash_index": self.compute_hash_index,
+    #         "point_count": self.compute_point_count,
+    #         "point_density": self.compute_point_density,
+    #         "percentage_occupied": self.compute_percentage_occupied,
+    #         "covariance_matrix": self.compute_covariance_matrix,
+    #         "eigenvalues": self.compute_eigenvalues,
+    #         "geometric_features": self.compute_geometric_features,
+    #         "center_of_gravity": self.compute_center_of_gravity,
+    #         "distance_to_center_of_gravity": self.compute_distance_to_center_of_gravity,
+    #         "std_of_cog": self.compute_std_of_cog,
+    #         "closest_to_center_of_gravity": self.compute_closest_to_center_of_gravity,
+    #         "center_of_voxel": self.compute_center_of_voxel,
+    #         "corner_of_voxel": self.compute_corner_of_voxel
+    #     }
+
+    #     for computation_name in self.compute:
+    #         if computation_name in computations:
+    #             if getattr(self,computation_name) is True:
+    #                 continue
+    #             try:
+    #                 computations[computation_name]() 
+    #             except Exception as e:
+    #                 raise e  # Re-raise exception or handle accordingly
+    #         else:
+    #             raise ValueError(f"Invalid computation name: {computation_name}")
+
     @trace
     @timeit
     def compute_requested_attributes(self):
         """
-        Computes attributes based on the calculate input list. [optional]
+        Computes attributes based on the 'compute' input list.
+
+        This method iterates over the list of computations specified in `self.compute` and calls
+        the corresponding methods to compute various attributes of the voxel data.
+
+        The available computations are:
+            - "big_int_index"
+            - "hash_index"
+            - "voxel_index"
+            - "point_count"
+            - "point_density"
+            - "percentage_occupied"
+            - "covariance_matrix"
+            - "eigenvalues"
+            - "geometric_features"
+            - "center_of_gravity"
+            - "distance_to_center_of_gravity"
+            - "std_of_cog"
+            - "closest_to_center_of_gravity"
+            - "center_of_voxel"
+            - "corner_of_voxel"
         """
-        if "big_int_index" in self.compute:                 self.compute_big_int_index()
-        if "hash_index" in self.compute:                    self.compute_hash_index()
-        if "point_count" in self.compute:                   self.compute_point_count()
-        if "point_density" in self.compute:                 self.compute_point_density()
-        if "percentage_occupied" in self.compute:           self.compute_percentage_occupied()
-        if "covariance_matrix" in self.compute:             self.compute_covariance_matrix()
-        if "eigenvalues" in self.compute:                   self.compute_eigenvalues()
-        if "geometric_features" in self.compute:            self.compute_geometric_features()
-        if "center_of_gravity" in self.compute:             self.compute_center_of_gravity()
-        if "distance_to_center_of_gravity" in self.compute: self.compute_distance_to_center_of_gravity()
-        if "std_of_cog" in self.compute:                    self.compute_std_of_cog()
-        if "closest_to_center_of_gravity" in self.compute:  self.compute_closest_to_center_of_gravity()
-        if "center_of_voxel" in self.compute:               self.compute_center_of_voxel()
-        if "corner_of_voxel" in self.compute:               self.compute_corner_of_voxel()
+        
+        # Validate the 'compute' list
+        self._validate_compute_list()
+        
+        for computation_name in self.compute:
+            if getattr(self,computation_name) is True:
+                continue
+            method_name = f"compute_{computation_name}"
+            method = getattr(self, method_name, None)
+            if callable(method):
+                try:
+                    print(f"Starting computation of '{computation_name}'")
+                    method()
+                    print(f"Successfully computed '{computation_name}'")
+                except Exception as e:
+                    print(f"Error computing '{computation_name}': {e}")
+                    raise e
+            else:
+                print(f"Invalid computation name: '{computation_name}'")
+                raise ValueError(f"Invalid computation name: '{computation_name}'")
+
 
     def update_attribute_dictionary(self, 
-                                    remove_cols = ["X","Y","Z",'bit_fields', 
-                                              'raw_classification','scan_angle_rank', 
-                                              'user_data', 'point_source_id']):
+                                    remove_cols=None):
         """
-        If not specified, for each attribute the mean will be computed if point cloud is voxelized. If specified, the selected statistic will me computed
+        Updates the attribute dictionary with default statistics.
+
+        If not specified, the mean will be computed for each attribute when the point cloud is voxelized.
+        If a specific statistic is specified for an attribute, it will be used instead.
+
+        Parameters
+        ----------
+        remove_cols : list, optional
+            List of column names to remove from the attributes to be processed.
+            Defaults to ['X', 'Y', 'Z', 'bit_fields', 'raw_classification',
+            'scan_angle_rank', 'user_data', 'point_source_id'].
+
+        Notes
+        -----
+        - The method updates `self.attributes` by setting the default statistic to "mean" for each attribute,
+        unless a different statistic is already specified in `self.attributes`.
+        - Sets `self.attributes_up_to_data` to True after updating the attributes.
         """
-        # list(map(self.attributes.remove,["X","Y","Z"])) #remove XYZ as xyz should be read directly to not scale and shift the points in an extra step.
+        if remove_cols is None:
+            remove_cols = ["X", "Y", "Z", 'bit_fields', 'raw_classification',
+                        'scan_angle_rank', 'user_data', 'point_source_id']
 
         original_attributes = list(self.original_attributes)
         for dc in remove_cols:
@@ -191,7 +344,7 @@ class VASP:
                 original_attributes.remove(dc)
             except:
                 pass
-        # original_attributes = list(map(original_attributes.remove,remove_cols))
+
         attributes = {}
         for col in original_attributes:
             attributes[col] = "mean"
@@ -200,116 +353,333 @@ class VASP:
         self.attributes = attributes
         self.attributes_up_to_data = True
 
+    # @trace
+    # @timeit
+    # def compute_requested_statistics_per_attributes_old(self):
+    #     """
+    #     Computes the statistics requested per existing attribute. Can also 
+    #     be used for calculating mode. However needs more testing for now.
+    #     If works, will replace pandas based method.
+    #     Current options:
+    #         - Mean
+    #         - Median
+    #         - Mode
+    #         - Min
+    #         - Max
+    #         - Sum
+    #         - mode_count
+    #     """
+
+    #     if self.voxelized is False:
+    #         self.voxelize()
+    #         self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+    #     if self.attributes_up_to_data is False:
+    #         self.update_attribute_dictionary()
+    #     df_temp_subset = self.df[["voxel_x", "voxel_y", "voxel_z"]+list(self.attributes.keys())]
+    #     dtypes = [(col, df_temp_subset[col].dtypes) for col in df_temp_subset.columns]
+    #     data = np.array([tuple(row) for row in df_temp_subset.values], dtype=dtypes)
+    #     sorted_indices = np.lexsort((data["voxel_z"], data["voxel_y"], data["voxel_x"]))
+    #     sorted_data = data[sorted_indices]
+    #     groups, indices = np.unique(sorted_data[["voxel_x", "voxel_y", "voxel_z"]], return_index=True)#, axis=0)
+    #     all_aggregated_data = {}
+    #     all_aggregated_datalist = []
+    #     final_dtype = [
+    #         ("voxel_x", groups["voxel_x"].dtype), 
+    #         ("voxel_y", groups["voxel_y"].dtype), 
+    #         ("voxel_z", groups["voxel_z"].dtype)
+    #         ]
+    #     local_names_col_names = {}
+    #     local_names = []
+    #     print("Computing stats")
+    #     for attr in self.attributes.keys():
+    #         if not type(self.attributes[attr]) is list:
+    #             self.attributes[attr] = [self.attributes[attr]]
+    #         for enum,stat_request in enumerate(self.attributes[attr]):
+    #             if "mode_count" in stat_request:
+    #                 print(self.attributes[attr])
+    #                 percentage = float(stat_request.split(",")[-1])
+    #                 start = time.time()
+    #                 sorted_data_attr = sorted_data[attr]
+    #                 sorted_data_attr = np.array(sorted_data_attr, dtype=int)
+    #                 split_arr = np.array_split(sorted_data_attr, indices[1:])
+    #                 bc = list(map(np.bincount, split_arr))
+    #                 bc_sum = list(map(sum, bc))
+    #                 bc_prop = list(map(np.divide, bc, bc_sum))
+    #                 comparaison = list(map(lambda sublist: sublist > percentage, bc_prop))
+    #                 aggregated_data = list(map(sum, comparaison))
+    #                 end = time.time()
+    #                 print(f"Computing 'mode_count' for attribute '{attr}' took: {end - start:.4f} sec")
+    #             elif stat_request == "mode":
+    #                 start = time.time()
+    #                 aggregated_data = list(map(lambda i: np.apply_along_axis(lambda x: [np.bincount(x.astype(int)).argmax()], axis=0, arr=sorted_data[attr][indices[i]:indices[i + 1]])[0], range(len(indices) - 1)))
+    #                 aggregated_data.append(pd.Series(sorted_data[attr][indices[-1]:]).mode()[0])
+    #                 end = time.time()
+    #                 print(f"Computing 'mode' for attribute '{attr}' took: {end - start:.4f} sec")
+    #             elif stat_request == "sum":
+    #                 aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].sum() for i in range(len(indices) - 1)]
+    #                 aggregated_data.append(sorted_data[attr][indices[-1]:].sum())
+    #             elif stat_request == "mean":
+    #                 aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].mean() for i in range(len(indices) - 1)]
+    #                 aggregated_data.append(sorted_data[attr][indices[-1]:].mean())
+    #             elif stat_request == "median":
+    #                 aggregated_data = [np.median(sorted_data[attr][indices[i]:indices[i + 1]]) for i in range(len(indices) - 1)]
+    #                 aggregated_data.append(np.median(sorted_data[attr][indices[-1]:]))
+    #             elif stat_request == "min":
+    #                 aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].min() for i in range(len(indices) - 1)]
+    #                 aggregated_data.append(sorted_data[attr][indices[-1]:].min())
+    #             elif stat_request == "max":
+    #                 aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].max() for i in range(len(indices) - 1)]
+    #                 aggregated_data.append(sorted_data[attr][indices[-1]:].max())
+    #             else:
+    #                 print("Aggregation type unknown for %s"%attr)
+    #                 self.drop_columns(attr)
+    #                 continue
+
+    #             # all_aggregated_data[attr+"_%s"%enum] = aggregated_data
+    #             all_aggregated_datalist.append(aggregated_data)
+    #             final_dtype += [(attr+"_%s"%enum,np.array(aggregated_data).dtype)]
+    #             local_names_col_names.update({attr+"_%s"%enum:"%s_%s"%(attr,stat_request)})
+    #             local_names.append(attr+"_%s"%enum)
+    #             #If attributes should not be saved with stat indication activate lower line.
+    #             # self.drop_columns += ["%s_%s"%attr,self.attributes[attr]]
+    #             # local_names.append(attr)
+    #     combined_data = [tuple(list(group) + [agg[i] for agg in all_aggregated_datalist]) for i, group in enumerate(groups)]
+
+    #     result_array = np.array(combined_data, dtype=final_dtype)
+    #     grouped = pd.DataFrame(result_array,columns = ["voxel_x", "voxel_y", "voxel_z"]+local_names)
+    #     grouped.rename(columns=local_names_col_names, inplace=True)
+    #     self.df = self.df.merge(grouped, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
+    #     self.attributes_per_voxel = True
+
+    # @trace
+    # @timeit
+    # def compute_requested_statistics_per_attributes_pandas(self):
+    #     """
+    #     Computes the requested statistics per voxel for specified attributes.
+
+    #     This method computes various statistics (e.g., mean, median, mode) for each attribute in `self.attributes`,
+    #     grouped by voxel indices ('voxel_x', 'voxel_y', 'voxel_z').
+
+    #     The available statistics are:
+    #         - "mean"
+    #         - "median"
+    #         - "mode"
+    #         - "min"
+    #         - "max"
+    #         - "sum"
+    #         - "mode_count"
+
+    #     For "mode_count", an additional parameter can be specified to define the percentage threshold.
+
+    #     Notes:
+    #         - If the data is not voxelized (`self.voxelized` is False), the method will voxelize the data first.
+    #         - If the attribute dictionary is not updated (`self.attributes_up_to_data` is False), it will be updated.
+
+    #     Raises:
+    #         KeyError: If required columns are missing in `self.df`.
+    #         ValueError: If invalid statistics are specified.
+
+    #     Side Effects:
+    #         - Updates `self.df` by merging the computed statistics.
+    #         - Sets `self.attributes_per_voxel` to True.
+    #     """
+    #     # Ensure data is voxelized
+    #     if not self.voxelized:
+    #         self.voxelize()
+    #         self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+
+    #     # Update attribute dictionary if needed
+    #     if not self.attributes_up_to_data:
+    #         self.update_attribute_dictionary()
+
+    #     # Check required columns
+    #     required_columns = ["voxel_x", "voxel_y", "voxel_z"] + list(self.attributes.keys())
+    #     missing_columns = [col for col in required_columns if col not in self.df.columns]
+    #     if missing_columns:
+    #         raise KeyError(f"Missing columns in `self.df`: {missing_columns}")
+
+    #     # Subset the DataFrame
+    #     df_subset = self.df[required_columns]
+
+    #     # Group the data by voxel indices
+    #     grouped = df_subset.groupby(['voxel_x', 'voxel_y', 'voxel_z'])
+
+    #     # Prepare to collect aggregated data
+    #     agg_dict = {}
+    #     for attr, stats_list in self.attributes.items():
+    #         if not isinstance(stats_list, list):
+    #             stats_list = [stats_list]
+    #         for stat in stats_list:
+    #             if "mode_count" in stat:
+    #                 # Extract percentage threshold from 'mode_count,percentage'
+    #                 try:
+    #                     _, percentage_str = stat.split(',')
+    #                     percentage = float(percentage_str)
+    #                 except ValueError:
+    #                     raise ValueError(f"Invalid 'mode_count' specification for attribute '{attr}': '{stat}'")
+    #                 # Define custom aggregation function
+    #                 def mode_count_func(x):
+    #                     counts = x.value_counts(normalize=True)
+    #                     return (counts >= percentage).sum()
+    #                 agg_name = f"{attr}_mode_count_{percentage}"
+    #                 agg_dict[agg_name] = (attr, mode_count_func)
+    #             elif stat == "mode":
+    #                 agg_name = f"{attr}_mode"
+    #                 agg_dict[agg_name] = (attr, lambda x: x.mode().iloc[0] if not x.mode().empty else np.nan)
+    #             elif stat in ["mean", "median", "min", "max", "sum"]:
+    #                 agg_name = f"{attr}_{stat}"
+    #                 agg_dict[agg_name] = (attr, stat)
+    #             else:
+    #                 print(f"Unknown aggregation type '{stat}' for attribute '{attr}'. Skipping.")
+    #                 continue
+
+    #     print("Computing statistics per voxel...")
+
+    #     # Perform aggregation
+    #     aggregated = grouped.agg(**agg_dict).reset_index()
+
+    #     # Merge aggregated data back into self.df
+    #     self.df = self.df.merge(aggregated, on=['voxel_x', 'voxel_y', 'voxel_z'], how='left')
+
+    #     self.attributes_per_voxel = True
+
     @trace
     @timeit
     def compute_requested_statistics_per_attributes(self):
         """
-        Computes the statistics requested per existing attribute. Can also 
-        be used for calculating mode. However needs more testing for now.
-        If works, will replace pandas based method.
-        Current options:
-            - Mean
-            - Median
-            - Mode
-            - Min
-            - Max
-            - Sum
-            - mode_count
-        """
+        Computes the requested statistics per voxel for specified attributes using NumPy.
 
-        if self.voxelized is False:
+        This method computes various statistics (e.g., mean, median, mode) for each attribute in `self.attributes`,
+        grouped by voxel indices ('voxel_x', 'voxel_y', 'voxel_z').
+
+        The available statistics are:
+            - "mean"
+            - "median"
+            - "mode"
+            - "min"
+            - "max"
+            - "sum"
+            - "mode_count"
+
+        For "mode_count", an additional parameter can be specified to define the percentage threshold.
+
+        Notes:
+            - If the data is not voxelized (`self.voxelized` is False), the method will voxelize the data first.
+            - If the attribute dictionary is not updated (`self.attributes_up_to_data` is False), it will be updated.
+
+        Raises:
+            KeyError: If required columns are missing in `self.df`.
+            ValueError: If invalid statistics are specified.
+
+        Side Effects:
+            - Updates `self.df` by merging the computed statistics.
+            - Sets `self.attributes_per_voxel` to True.
+        """
+        # import time
+
+        # Ensure data is voxelized
+        if not self.voxelized:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        if self.attributes_up_to_data is False:
+
+        # Update attribute dictionary if needed
+        if not self.attributes_up_to_data:
             self.update_attribute_dictionary()
-        df_temp_subset = self.df[["voxel_x", "voxel_y", "voxel_z"]+list(self.attributes.keys())]
-        dtypes = [(col, df_temp_subset[col].dtypes) for col in df_temp_subset.columns]
+
+        # Check required columns
+        required_columns = ["voxel_x", "voxel_y", "voxel_z"] + list(self.attributes.keys())
+        missing_columns = [col for col in required_columns if col not in self.df.columns]
+        if missing_columns:
+            raise KeyError(f"Missing columns in `self.df`: {missing_columns}")
+
+        # Subset the DataFrame
+        df_temp_subset = self.df[required_columns]
+
+        # Convert DataFrame to structured NumPy array
+        dtypes = [(col, df_temp_subset[col].dtype) for col in df_temp_subset.columns]
         data = np.array([tuple(row) for row in df_temp_subset.values], dtype=dtypes)
-        sorted_indices = np.lexsort((data["voxel_z"], data["voxel_y"], data["voxel_x"]))
+
+        # Sort data by voxel indices
+        sorted_indices = np.lexsort((data['voxel_z'], data['voxel_y'], data['voxel_x']))
         sorted_data = data[sorted_indices]
-        groups, indices = np.unique(sorted_data[["voxel_x", "voxel_y", "voxel_z"]], return_index=True)#, axis=0)
-        all_aggregated_data = {}
-        all_aggregated_datalist = []
-        final_dtype = [
-            ("voxel_x", groups["voxel_x"].dtype), 
-            ("voxel_y", groups["voxel_y"].dtype), 
-            ("voxel_z", groups["voxel_z"].dtype)
-            ]
-        local_names_col_names = {}
-        local_names = []
-        print("Computing stats")
-        for attr in self.attributes.keys():
-            if not type(self.attributes[attr]) is list:
-                self.attributes[attr] = [self.attributes[attr]]
-            for enum,stat_request in enumerate(self.attributes[attr]):
-                if "mode_count" in stat_request:
-                    print(self.attributes[attr])
-                    percentage = float(stat_request.split(",")[-1])
-                    start = time.time()
-                    sorted_data_attr = sorted_data[attr]
-                    sorted_data_attr = np.array(sorted_data_attr, dtype=int)
-                    split_arr = np.array_split(sorted_data_attr, indices[1:])
-                    bc = list(map(np.bincount, split_arr))
-                    bc_sum = list(map(sum, bc))
-                    bc_prop = list(map(np.divide, bc, bc_sum))
-                    comparaison = list(map(lambda sublist: sublist > percentage, bc_prop))
-                    aggregated_data = list(map(sum, comparaison))
-                    end = time.time()
-                    print(f"Computing 'mode_count' for attribute '{attr}' took: {end - start:.4f} sec")
-                elif stat_request == "mode":
-                    start = time.time()
-                    aggregated_data = list(map(lambda i: np.apply_along_axis(lambda x: [np.bincount(x.astype(int)).argmax()], axis=0, arr=sorted_data[attr][indices[i]:indices[i + 1]])[0], range(len(indices) - 1)))
-                    aggregated_data.append(pd.Series(sorted_data[attr][indices[-1]:]).mode()[0])
-                    end = time.time()
-                    print(f"Computing 'mode' for attribute '{attr}' took: {end - start:.4f} sec")
-                elif stat_request == "sum":
-                    aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].sum() for i in range(len(indices) - 1)]
-                    aggregated_data.append(sorted_data[attr][indices[-1]:].sum())
-                elif stat_request == "mean":
-                    aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].mean() for i in range(len(indices) - 1)]
-                    aggregated_data.append(sorted_data[attr][indices[-1]:].mean())
-                elif stat_request == "median":
-                    aggregated_data = [np.median(sorted_data[attr][indices[i]:indices[i + 1]]) for i in range(len(indices) - 1)]
-                    aggregated_data.append(np.median(sorted_data[attr][indices[-1]:]))
-                elif stat_request == "min":
-                    aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].min() for i in range(len(indices) - 1)]
-                    aggregated_data.append(sorted_data[attr][indices[-1]:].min())
-                elif stat_request == "max":
-                    aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].max() for i in range(len(indices) - 1)]
-                    aggregated_data.append(sorted_data[attr][indices[-1]:].max())
-                else:
-                    print("Aggregation type unknown for %s"%attr)
-                    self.drop_columns(attr)
-                    continue
 
-                # all_aggregated_data[attr+"_%s"%enum] = aggregated_data
-                all_aggregated_datalist.append(aggregated_data)
-                final_dtype += [(attr+"_%s"%enum,np.array(aggregated_data).dtype)]
-                local_names_col_names.update({attr+"_%s"%enum:"%s_%s"%(attr,stat_request)})
-                local_names.append(attr+"_%s"%enum)
-                #If attributes should not be saved with stat indication activate lower line.
-                # self.drop_columns += ["%s_%s"%attr,self.attributes[attr]]
-                # local_names.append(attr)
-        combined_data = [tuple(list(group) + [agg[i] for agg in all_aggregated_datalist]) for i, group in enumerate(groups)]
+        # Find unique voxel groups and their indices
+        voxel_keys = sorted_data[['voxel_x', 'voxel_y', 'voxel_z']]
+        groups, indices = np.unique(voxel_keys, return_index=True)
 
-        result_array = np.array(combined_data, dtype=final_dtype)
-        grouped = pd.DataFrame(result_array,columns = ["voxel_x", "voxel_y", "voxel_z"]+local_names)
-        grouped.rename(columns=local_names_col_names, inplace=True)
-        self.df = self.df.merge(grouped, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
+        # Prepare to collect aggregated data
+        aggregated_data = {}
+        attribute_names = []
+        print("Computing statistics per voxel...")
+
+        for attr, stats_list in self.attributes.items():
+            if not isinstance(stats_list, list):
+                stats_list = [stats_list]
+            for stat in stats_list:
+                print(f"Computing '{stat}' for attribute '{attr}'")
+                # start_time = time.time()
+                aggregated_values = []
+                for i in range(len(indices)):
+                    start_idx = indices[i]
+                    end_idx = indices[i + 1] if i + 1 < len(indices) else len(sorted_data)
+                    group_slice = sorted_data[attr][start_idx:end_idx]
+                    if stat == "mean":
+                        value = group_slice.mean()
+                    elif stat == "median":
+                        value = np.median(group_slice)
+                    elif stat == "min":
+                        value = group_slice.min()
+                    elif stat == "max":
+                        value = group_slice.max()
+                    elif stat == "sum":
+                        value = group_slice.sum()
+                    elif stat == "mode":
+                        counts = np.bincount(group_slice.astype(int))
+                        value = np.argmax(counts)
+                    elif "mode_count" in stat:
+                        # Extract percentage threshold
+                        try:
+                            _, percentage_str = stat.split(',')
+                            percentage = float(percentage_str)
+                        except ValueError:
+                            raise ValueError(f"Invalid 'mode_count' specification for attribute '{attr}': '{stat}'")
+                        counts = np.bincount(group_slice.astype(int))
+                        counts_sum = counts.sum()
+                        proportions = counts / counts_sum
+                        count_above_threshold = np.sum(proportions >= percentage)
+                        value = count_above_threshold
+                    else:
+                        print(f"Unknown aggregation type '{stat}' for attribute '{attr}'. Skipping.")
+                        continue
+                    aggregated_values.append(value)
+                # end_time = time.time()
+                # print(f"Computed '{stat}' for attribute '{attr}' in {end_time - start_time:.2f} seconds")
+                col_name = f"{attr}_{stat}"
+                aggregated_data[col_name] = aggregated_values
+                attribute_names.append(col_name)
+
+        # Build the result array
+        result_dtype = [('voxel_x', sorted_data['voxel_x'].dtype),
+                        ('voxel_y', sorted_data['voxel_y'].dtype),
+                        ('voxel_z', sorted_data['voxel_z'].dtype)]
+        result_dtype += [(name, np.array(values).dtype) for name, values in aggregated_data.items()]
+
+        result_array = np.zeros(len(groups), dtype=result_dtype)
+        result_array['voxel_x'] = groups['voxel_x']
+        result_array['voxel_y'] = groups['voxel_y']
+        result_array['voxel_z'] = groups['voxel_z']
+
+        for name, values in aggregated_data.items():
+            result_array[name] = values
+
+        # Convert result array to DataFrame
+        grouped_df = pd.DataFrame(result_array)
+
+        # Merge aggregated data back into self.df
+        self.df = self.df.merge(grouped_df, on=['voxel_x', 'voxel_y', 'voxel_z'], how='left')
+
         self.attributes_per_voxel = True
 
-    @trace
-    @timeit
-    def compute_big_int_index_old(self):
-        """
-        Computes a big int index for all occupied voxels (as a str).
-        """
-        if self.voxelized is False:
-            self.voxelize()
-            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        
-        self.df.loc[:,"big_int_index"] = (self.df.loc[:, 'voxel_x'].astype(str)+ self.df.loc[:, 'voxel_y'].astype(str)+self.df.loc[:, 'voxel_z'].astype(str)).astype(int)
-        self.big_int_index = True
        
     @trace
     @timeit
@@ -326,6 +696,22 @@ class VASP:
         self.df.loc[:,"big_int_index"] = self.df.loc[:, 'voxel_x']*n**2+ self.df.loc[:, 'voxel_y']*n+self.df.loc[:, 'voxel_z']
         self.big_int_index = True
        
+    @trace
+    @timeit
+    def compute_voxel_index(self):
+        """
+        Computes a unique voxel index using voxel coordinates as a tuple.
+        """
+        if not self.voxelized:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+        
+        self.df['voxel_index'] = list(zip(
+            self.df['voxel_x'],
+            self.df['voxel_y'],
+            self.df['voxel_z']
+        ))
+        self.voxel_index = True
 
    
     @trace
@@ -568,7 +954,7 @@ class VASP:
         self.voxel_cog = grouped[["X", "Y", "Z"]].std().reset_index()
         self.voxel_cog.rename(columns={"X": "std_x", "Y": "std_y", "Z": "std_z"}, inplace=True)
         self.df = self.df.merge(self.voxel_cog, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
-        self.center_of_gravity = True
+        self.std_of_cog = True
 
     @trace
     @timeit
