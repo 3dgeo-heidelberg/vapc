@@ -14,7 +14,8 @@ def initiate_vasp(lazfile,
 def mask(vasp_pc,
         maskfile,
         segment_in_or_out,
-        buffer_size
+        buffer_size,
+        reduce_to = False
         ):
     #Apply offset
     vasp_pc.compute_reduction_point()
@@ -39,6 +40,9 @@ def mask(vasp_pc,
                            segment_in_or_out = segment_in_or_out)
     #Undo offset
     vasp_pc.compute_offset()
+    if reduce_to: #check if it should be reduced to voxels
+        vasp_pc.return_at = reduce_to
+        vasp_pc.reduce_to_voxels()
     return vasp_pc.df
 
 def subsample(vasp_pc,
@@ -161,7 +165,8 @@ def use_tool(tool_name,
         dh.df = mask(vasp_pc=vasp_pc,
                      maskfile=args["maskfile"],
                      segment_in_or_out=args["segment_in_or_out"],
-                     buffer_size=args["buffer_size"])
+                     buffer_size=args["buffer_size"],
+                     reduce_to=reduce_to)
         
     elif tool_name == "compute":
         dh.df = compute_attributes(vasp_pc = vasp_pc,

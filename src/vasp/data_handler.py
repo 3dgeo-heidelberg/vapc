@@ -79,12 +79,9 @@ class DATA_HANDLER:
         if las_offset is None:
             las_offset = [self.df["X"].min(), self.df["Y"].min(), self.df["Z"].min()]
         
-        if not hasattr(self, 'las_header'):
-            new_header = laspy.LasHeader(point_format = las_point_format,version = las_version)
-            new_header.offsets = las_offset
-            new_header.scales = las_scales
-        else:
-            new_header = self.las_header
+        new_header = laspy.LasHeader(point_format = las_point_format,version = las_version)
+        new_header.offsets = las_offset
+        new_header.scales = las_scales
 
         self.lasFile = laspy.LasData(new_header)
         self.lasFile.x = self.df["X"]
@@ -93,20 +90,16 @@ class DATA_HANDLER:
         #for VLS data...
         try:
             self.lasFile.remove_extra_dims(["ExtraBytes"])
-        except KeyError:
+        except:
             pass  # 'ExtraBytes' dimension does not exist
         # Add other attributes to output:
         for name in self.df.columns:
             if name not in ["X", "Y", "Z"]:
                 try:
                     self.lasFile[name] = self.df[name]
-
-                except AttributeError:
-                    self._addDimensionToLaz(self.df[name].astype(np.float32), name)
-                    print("Adding new dimension %s"%name)
                 except Exception as e:
-                    print("Error adding dimension %s"%name)
-                    raise
+                    self._addDimensionToLaz(self.df[name].astype(np.float32),name)
+                    print("Adding new dimension %s"%name)
         self.lasFile.write(outfile)
         
     def _addDimensionToLaz(self,
@@ -115,17 +108,12 @@ class DATA_HANDLER:
         """
         Write new attribute to laz file.
         """
-        name = self._sanitize_name(name)
         self.lasFile.add_extra_dim(laspy.ExtraBytesParams(
-        name=name,
-        type=array.dtype,
-        description=name
-        ))
+            name=name,
+            type=array.dtype,
+            description=name
+            ))
         self.lasFile[name] = array
-
-    def _sanitize_name(self,
-                       name):
-        return name[:32]  # LAS specification may limit names to 32 characters
 
 
 

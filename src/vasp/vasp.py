@@ -399,6 +399,7 @@ class VASP:
             return
         print("Points after filtering:",self.df.shape)
         self.df = self.df.drop(["voxel_x", "voxel_y", "voxel_z",mask_attribute],axis = 1)
+        self.voxelized = False
 
     @trace
     @timeit
@@ -643,7 +644,7 @@ class VASP:
             The center of gravity computed within each voxel containing points ("center_of_gravity") 
         """
         if self.return_at == "center_of_voxel":
-            if self.center_of_voxel is False:
+            if self.center_of_voxel is False or not hasattr(self.df,"center_x"):
                 self.compute_center_of_voxel()
                 self.drop_columns+=["center_x", "center_y", "center_z"]
             self.new_column_names.update({"X":"center_x","Y":"center_y","Z":"center_z"})
