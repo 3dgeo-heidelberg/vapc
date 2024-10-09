@@ -7,7 +7,6 @@ from multiprocessing import Pool
 def las_create_or_append(fh, las, mask, tile_name):
     if os.path.exists(tile_name):
         # If the outfile exists, append points to it
-        print(tile_name)
         with laspy.open(tile_name, "a") as lf:
             app_p = las.points[mask]
             lf.append_points(app_p)
@@ -28,6 +27,7 @@ def las_create_or_append(fh, las, mask, tile_name):
 
 def las_merge(filepaths,
               outfile):
+    print(filepaths)
     with laspy.open(filepaths[0],"r") as lf_0:
         las = lf_0.read()
         las.write(outfile)
@@ -69,7 +69,8 @@ def las_create_3DTiles(lazfile,
         y_max = np.ceil(extent[4])
         z_min = np.floor(extent[2])
         z_max = np.ceil(extent[5])
-    print("Opened file")
+        if x_min == 0 and x_max == 0 and y_min == 0 and y_max == 0 and z_min == 0 and z_max == 0:
+            assert False, "extent not defined in header of las/laz file"
     #Find number of Tiles for x and y direction
     diffX = x_max - x_min
     diffY = y_max - y_min
@@ -77,7 +78,7 @@ def las_create_3DTiles(lazfile,
     xTiles = int(np.ceil(diffX / tilesize))
     yTiles = int(np.ceil(diffY / tilesize))
     zTiles = int(np.ceil(diffZ / tilesize))
-    
+
     # Define X,Y Boundaries for the tiles
     xVerts = np.arange(x_min, x_min + xTiles * tilesize + 1, tilesize)
     yVerts = np.arange(y_min, y_min + yTiles * tilesize + 1, tilesize)

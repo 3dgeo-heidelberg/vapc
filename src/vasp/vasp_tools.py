@@ -34,6 +34,7 @@ def mask(vasp_pc,
     vasp_mask.compute_offset()
     #Buffer mask voxelized point cloud
     vasp_mask.compute_voxel_buffer(buffer_size = int(buffer_size))
+    vasp_mask.df = vasp_mask.buffer_df
     #Select by mask
     vasp_pc.select_by_mask(vasp_mask,
                            mask_attribute = "voxel_index",
