@@ -15,29 +15,40 @@ import sys
 
 class VASP:
     def __init__(self,
-                 voxel_size:float,
-                 origin:list = {},
-                 attributes:dict = {},
-                 compute:list = [],
-                 return_at:str = "closest_to_center_of_gravity"):
+             voxel_size: float,
+             origin: list = None,
+             attributes: dict = None,
+             compute: list = None,
+             return_at: str = "closest_to_center_of_gravity"):
         """
-        VASP [Under construction].
+        Initializes the VASP (Voxel Analysis and Processing) class.
 
-        Parameters:
-        - voxel_size (float): Defines voxel size..
-        - origin (list): Defines origin of voxel_space.
-        - attributes (dict): This dictionary contains information about which attributes to read 
-                                and what statistics to carry out on them.
-        - compute (list): Optional list containing name of attributes that will be calculated if 
-                                calling 'compute_requested_attributes'
-        - return_at (str): Specifies what point the data will be reduced to if calling 'reduce_to_voxels'. 
-                                Determines the location of each output voxel.
+        Parameters
+        ----------
+        voxel_size : float
+            Defines the size of each voxel.
+        origin : list, optional
+            Defines the origin of the voxel space. Defaults to [0,0,0].
+        attributes : dict, optional
+            Dictionary containing information about which attributes to read and 
+            what statistics to compute on them. Defaults to an empty dictionary.
+        compute : list, optional
+            List containing names of attributes that will be calculated when 
+            calling 'compute_requested_attributes'. Defaults to an empty list.
+        return_at : str, optional
+            Specifies the point to which the data will be reduced when calling 
+            'reduce_to_voxels'. Determines the location of each output voxel. 
+            Defaults to "closest_to_center_of_gravity".
+
+        Notes
+        -----
+        The class is under construction and may be subject to changes.
         """
-        #Relevant input:
+        # Relevant input:
         self.voxel_size = voxel_size
-        self.origin = origin
-        self.attributes = attributes
-        self.compute = compute
+        self.origin = origin if origin is not None else [0,0,0]
+        self.attributes = attributes if attributes is not None else {}
+        self.compute = compute if compute is not None else []
         self.return_at = return_at
         #Calculations not applied yet:
         self.attributes_up_to_data = False
@@ -59,27 +70,57 @@ class VASP:
         self.drop_columns = []
         self.new_column_names = {}
         self.reduced = False
-        self.reduction_point = False
+        self.reduction_point = None
         self.offset_applied = False
         
+        if self.voxel_size <= 0:
+            raise ValueError("voxel_size must be a positive number.")
+        if not isinstance(self.origin, list) or len(self.origin) != 3:
+            raise ValueError("origin must be a list of three coordinates [x, y, z].")
+
+
+
     @trace
     @timeit
-    def get_data_from_data_handler(self,data_handler):
+    def get_data_from_data_handler(self, data_handler):
         """
-        Gets dataframe from the data handler.
+        Moves the dataframe from the data handler to the VASP instance.
+
+        After this operation, data_handler will no longer have the 'df' attribute.
+
+        Parameters
+        ----------
+        data_handler : DATA_HANDLER
+            An instance of the DATA_HANDLER class from which to move the dataframe.
         """
+        if not hasattr(data_handler, 'df'):
+            raise AttributeError("The provided data_handler does not have a 'df' attribute.")
         self.df = data_handler.df
-        self.original_attributes = self.df.columns
+        del data_handler.df  # Remove df from data_handler
+        self.original_attributes = self.df.columns.tolist()
+
         
     @trace
     @timeit
     def compute_reduction_point(self):
-        self.reduction_point = [int(self.df["X"].min()),int(self.df["Y"].min()),int(self.df["Z"].min())]
+        """
+        Computes the minimum 'X', 'Y', and 'Z' values in the dataset and stores them in `self.reduction_point`.
+        This point can be used as a reference or offset for further computations.
+        """
+        self.reduction_point = [int(self.df["X"].min()),
+                                int(self.df["Y"].min()),
+                                int(self.df["Z"].min())]
 
     @trace
     @timeit
     def compute_offset(self):
-        if self.reduction_point is False:
+        """
+        Applies or removes an offset to the 'X', 'Y', and 'Z' coordinates based on `self.reduction_point`.
+
+        If `self.offset_applied` is False, the offset is subtracted from the coordinates, and `self.offset_applied` is set to True.
+        If `self.offset_applied` is True, the offset is added back to the coordinates, and `self.offset_applied` is set to False.
+        """
+        if self.reduction_point is None:
             self.compute_reduction_point()
         if self.offset_applied:
             self.df["X"] += self.reduction_point[0]
@@ -97,12 +138,21 @@ class VASP:
     @timeit
     def voxelize(self):
         """
-        Computes the voxel coordinates for each point.
+        Computes voxel indices for each point and adds them as new columns in `self.df`.
+
+        The voxel indices are calculated by subtracting `self.origin` from the point coordinates,
+        dividing by `self.voxel_size`, and taking the floor of the result.
+
+        Adds the following columns to `self.df`:
+            - 'voxel_x', 'voxel_y', 'voxel_z': The voxel indices along each axis.
         """
         for i,dim in enumerate(["X", "Y", "Z"]):
             self.df[f"voxel_{dim.lower()}"] = np.floor((self.df[dim] - self.origin[i]) / self.voxel_size).astype(int)
 
-        #self.df["voxel_id"] = self.df.iloc[:, -3:].astype(str).apply('_'.join, axis=1)
+        # Optionally create a unique voxel ID by combining voxel indices
+        # Uncomment the following line if you need a voxel identifier
+        # self.df["voxel_id"] = self.df[['voxel_x', 'voxel_y', 'voxel_z']].astype(str).agg('_'.join, axis=1)
+
         self.voxelized = True
 
     @trace
@@ -125,25 +175,6 @@ class VASP:
         if "closest_to_center_of_gravity" in self.compute:  self.compute_closest_to_center_of_gravity()
         if "center_of_voxel" in self.compute:               self.compute_center_of_voxel()
         if "corner_of_voxel" in self.compute:               self.compute_corner_of_voxel()
-
-    # @trace
-    # @timeit
-    # def compute_requested_statistics_per_attributes_old(self):
-    #     """
-    #     Computes the statistics requested per existing attribute. Can not 
-    #     be used for calculating mode (use numpy implementation for that)
-    #     """
-    #     if self.voxelized is False:
-    #         self.voxelize()
-    #         self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-    #     grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"]).agg(self.attributes).reset_index()
-    #     self.new_column_names = {}
-    #     for attr in self.attributes:
-    #         self.new_column_names.update({attr:"statistics_%s"%attr})
-    #         self.drop_columns += ["statistics_%s"%attr]
-    #     grouped.rename(columns=self.new_column_names, inplace=True)
-    #     self.df = self.df.merge(grouped, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
-    #     self.attributes_per_voxel = True
 
     def update_attribute_dictionary(self, 
                                     remove_cols = ["X","Y","Z",'bit_fields', 

@@ -22,7 +22,7 @@ def do_vasp_on_files(file,
 
     #document settings
     config = vasp_command
-    config["vasp_version"]= VASP_VERSION
+    config["vasp_version"] = VASP_VERSION
     config["file"] = file
     config["out_dir"] = out_dir
     config["voxel_size"] = voxel_size
@@ -37,14 +37,15 @@ def do_vasp_on_files(file,
         tile_dir = os.path.join(out_dir,"temp_tiles")
         if not os.path.isdir(tile_dir):
             os.mkdir(tile_dir)
-        inlas = os.path.join(out_dir,"merged_las.las")
         del_inlas = False
         if type(file) == list:
+            inlas = os.path.join(out_dir,"merged_las.las")
             las_merge(file,
                         inlas)
             del_inlas = True
         else:
             inlas = file
+            
         all_tiles = las_create_3DTiles(lazfile = inlas,
                             outDir=tile_dir,
                             tilesize= tile,
