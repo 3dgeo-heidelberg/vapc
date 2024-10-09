@@ -123,64 +123,26 @@ class DATA_HANDLER:
         ))
         self.lasFile[name] = array
 
-    def _sanitize_name(self,name):
+    def _sanitize_name(self,
+                       name):
         return name[:32]  # LAS specification may limit names to 32 characters
 
 
 
-    # @trace
-    # @timeit
-    # def _generate_mesh_data_old(self):
-    #     """
-    #     Generate mesh data from voxel information.
-    #     Returns a tuple of vertices, faces, and vertex colors.
-    #     """
-        
-    #     df_values = np.c_[self.df['X'].values, self.df['Y'].values, self.df['Z'].values,  self.df.iloc[:,3:].values]
-
-    #     # Calculate voxel corners
-    #     corners = self._calculate_voxel_corners(df_values)
-
-    #     # Add faces for one cube (a mesh voxel made of triangles)
-    #     face_indices_0 = np.array([
-    #         [0, 1, 2],  # Front
-    #         [4, 5, 6],  # Back
-    #         [0, 1, 5],  # Bottom
-    #         [2, 3, 7],  # Top
-    #         [1, 2, 6],  # Right
-    #         [3, 0, 4],  # Left
-    #         [0, 3, 2],  # Front
-    #         [4, 7, 6],  # Back
-    #         [0, 4, 5],  # Bottom
-    #         [2, 6, 7],  # Top
-    #         [1, 5, 6],  # Right
-    #         [3, 7, 4]   # Left
-    #     ])
-
-    #     # Number of corners
-    #     corners_shp = corners.shape[0]
-
-    #     # Number of voxels (number of corners divided by 8)
-    #     vxl_shp = int(corners_shp/8)
-        
-    #     # Tile the face indices array so the number of cubes is the same as the number of voxels
-    #     face_indices = np.tile(face_indices_0, (vxl_shp,1))
-
-    #     # Making an array to add to the face indices which will then be able to fetch the corresponding corner index for each face
-    #     n = np.arange(0, corners_shp, 8)
-    #     n = np.repeat(n, face_indices_0.shape[0])
-    #     n = np.tile(n, (face_indices_0.shape[1], 1)).T
-
-    #     # Adding up the array
-    #     face_indices += n
-
-    #     return corners, face_indices
-    
-
-    def _calculate_voxel_corners(self, df_values):
+    def _calculate_voxel_corners(self, 
+                                 df_values):
         """
-        Compute corners points for all the cubes.
-        Return corners points with their respective scalars.
+        Compute corner points for all voxels.
+        Returns corner points with their respective scalar attributes.
+
+        Parameters:
+            df_values (np.ndarray): An array where the first three columns are X, Y, Z 
+                                    coordinates,and the remaining columns are scalar 
+                                    attributes.
+
+        Returns:
+            np.ndarray: Array of voxel corner positions and their associated scalar 
+            attributes.
         """
         offset = self.voxel_size/2.
         xyz_offsets = np.array([
@@ -210,14 +172,18 @@ class DATA_HANDLER:
     
     @trace
     @timeit
-    def save_as_ply(self, outfile: str, voxel_size: float, shift_to_center: bool = False):
+    def save_as_ply(self, 
+                    outfile: str, 
+                    voxel_size: float, 
+                    shift_to_center: bool = False):
         """
-        Saves the voxel data as "cubes" in a .ply file.
+        Saves the voxel data as cubes in a .ply file.
 
         Parameters:
-        - outfile (str): Path where PLY file is stored.
-        - voxel_size (float): Edge length of the voxels to be created.
-        - shift_to_center (bool): Shift data to origin. Useful for visualizations in Blender to avoid shifting data.
+            outfile (str): Path where the PLY file will be stored.
+            voxel_size (float): Edge length of the voxels to be created.
+            shift_to_center (bool, optional): Shift data to origin. Useful for visualizations 
+                                            to center the object. Defaults to False.
         """
         # Adjust color values if necessary
         if "red" in self.df.columns and "green" in self.df.columns and "blue" in self.df.columns:
@@ -276,15 +242,20 @@ class DATA_HANDLER:
         # Write to PLY file
 
         with open(outfile, 'wb') as ply_file:
-            PlyData(PlyData([vertex_element, face_element], text=False)).write(ply_file)
+            PlyData([vertex_element, face_element], text=False).write(ply_file)
+
         
 
     def _generate_mesh_data(self):
         """
         Generate mesh data from voxel information.
-        Returns a tuple of vertices and faces.
+
+        Returns:
+            tuple: A tuple containing:
+                - np.ndarray: Array of vertex positions and scalar attributes.
+                - np.ndarray: Array of face indices.
         """
-        df_values = np.c_[self.df['X'].values, self.df['Y'].values, self.df['Z'].values, self.df.iloc[:, 3:].values]
+        df_values = self.df[['X', 'Y', 'Z'] + list(self.df.columns[3:])].values
 
         # Calculate voxel corners
         corners = self._calculate_voxel_corners(df_values)
