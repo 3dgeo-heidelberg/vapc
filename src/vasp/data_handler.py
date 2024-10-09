@@ -9,19 +9,19 @@ from .utilities import trace,timeit
 from scipy import stats
 
 class DATA_HANDLER:
-    def __init__(self,
-                 infiles:list
-                 ):
+    def __init__(self, infiles):
         """
-        Contains the functionality for opening and saving data. 
+        Contains the functionality for opening and saving data.
         The tool is currently being optimized to simplify workflows with the voxelizer.
 
         Parameters:
-        - infiles (list): This list contains one or more laz files that will be converted into a single dataframe.
-        - attributes (dict): This dictionary contains information about which attributes to read and 
-                                what statistics to carry out on them.
+        - infiles (str or list): A file path or a list of file paths to laz files that will be 
+        converted into a single dataframe.
         """
-        self.files = infiles
+        if isinstance(infiles, list):
+            self.files = infiles
+        else:
+            self.files = [infiles]
 
     @trace
     @timeit
@@ -47,8 +47,13 @@ class DATA_HANDLER:
                                 data = np.array([las.x,las.y,las.z]+[las[attr] for attr in self.attributes]).T,
                                 columns = ["X","Y","Z"]+[attr for attr in self.attributes])
                 all_data.append(df)
-        # Merge all data frames in the list and store in self.df
-        self.df = pd.concat(all_data, ignore_index=True)
+
+        # Merge all data frames and append to existing or create new df
+        if hasattr(self, 'df'):
+            self.df = pd.concat([self.df] + all_data, ignore_index=True)
+        else:
+            self.df = pd.concat(all_data, ignore_index=True)
+
 
     @trace
     @timeit
