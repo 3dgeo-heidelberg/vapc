@@ -27,12 +27,10 @@ class DATA_HANDLER:
     @timeit
     def load_las_files(self):
         """
-        This function opens one or more laz files and reads them.  
-        The data is stored in a Pandas dataframe.
+        Opens one or more LAZ or LAS files and reads them into a Pandas DataFrame.
+        The data from each file is concatenated into a single DataFrame stored in `self.df`.
         """
-
         all_data = []
-        print(self.files)
         if type(self.files) != list:
             self.files = [self.files]
 
@@ -45,7 +43,7 @@ class DATA_HANDLER:
                 list(map(self.attributes.remove,["X","Y","Z"])) #remove XYZ as xyz should be read directly to not scale and shift the points in an extra step.
                 df = pd.DataFrame(
                                 data = np.array([las.x,las.y,las.z]+[las[attr] for attr in self.attributes]).T,
-                                columns = ["X","Y","Z"]+[attr for attr in self.attributes])
+                                columns = ["X", "Y", "Z"] + self.attributes)
                 all_data.append(df)
 
         # Merge all data frames and append to existing or create new df
@@ -58,7 +56,11 @@ class DATA_HANDLER:
     @trace
     @timeit
     def save_as_las(self,
-                    outfile:str):
+                    outfile:str,
+                    las_point_format = 6,
+                    las_version = "1.4",
+                    las_scales = [0.00025,0.00025,0.00025],
+                    ):
         """
         Function used to save data stored in the dataframe at an given path.
 
@@ -66,14 +68,10 @@ class DATA_HANDLER:
         - outfile (str): Path where laz file is stored.
         """
         if not hasattr(self, 'las_header'):
-            new_header = laspy.LasHeader(point_format = 6,version = "1.4")
+            new_header = laspy.LasHeader(point_format = las_point_format,version = las_version)
             new_header.offsets = [self.df["X"].mean(),self.df["Y"].mean(),self.df["Z"].mean()]
-            new_header.scales = [0.00025,0.00025,0.00025]
+            new_header.scales = las_scales
             # raise ValueError("LAS header not found. Ensure a LAS file has been read.")
-        else:
-            new_header = laspy.LasHeader(point_format=self.las_header.point_format, version=self.las_header.version)
-            new_header.offsets = self.las_header.offsets
-            new_header.scales = self.las_header.scales 
         self.lasFile = laspy.LasData(new_header)
         self.lasFile.x = self.df["X"]
         self.lasFile.y = self.df["Y"]
@@ -92,55 +90,6 @@ class DATA_HANDLER:
                     self._addDimensionToLaz(self.df[name].astype(np.float32),name)
                     print("Adding new dimension %s"%name)
         self.lasFile.write(outfile)
-
-    # @trace
-    # @timeit
-    # def save_as_ply_old(self, 
-    #                     outfile:str, 
-    #                     voxel_size:float, 
-    #                     shift_to_center:bool = False):
-    #     """
-    #     Saves the voxeldata as "cubes" in a .ply file. 
-    #     !!!Fixed shift as parameter might be interesting.
-
-    #     Parameters:
-    #     - outfile (str): Path where laz file is stored.
-    #     - voxel_size (float): Edgelength of the voxels will be created with.
-    #     - shift_to_center (bool): Shift data to origin. Usefull for visualisations in Blender to avoid shifting data.
-    #     """
-    #     if "red" in self.df.columns and "green" in self.df.columns and "blue" in self.df.columns:
-    #         if self.df.red.max() > 255 or self.df.green.max() > 255 or self.df.blue.max() > 255:
-    #             self.df.red = (self.df.red / 65535.0 * 255).astype(np.uint8)
-    #             self.df.green = (self.df.green / 65535.0 * 255).astype(np.uint8)
-    #             self.df.blue = (self.df.blue / 65535.0 * 255).astype(np.uint8)
-
-    #     self.voxel_size = voxel_size
-    #     # self.scalars = self.df.columns
-    #     # self.scalars = self.scalars.drop(["X","Y","Z"])
-        
-    #     # try:
-    #     #     self.scalars = self.scalars.drop(["red","green","blue"])
-    #     # except:
-    #     #     pass
-
-    #     #verts, faces, vert_colors, attributes = self._generate_mesh_data()
-    #     verts, faces = self._generate_mesh_data()
-    #     if shift_to_center:
-    #         min_x = self.df.X.mean() + self.voxel_size / 2
-    #         min_y = self.df.Y.mean() + self.voxel_size / 2
-    #         min_z = self.df.Z.mean() + self.voxel_size / 2
-    #         min = np.array([min_x, min_y, min_z])
-    #         verts[:,:3] -= np.tile(min, (verts.shape[0], 1))
-    #     # verts = verts.astype(object)
-    #     vert_out = []
-    #     for i,c_ in enumerate(self.df.columns):
-    #         if self.df.columns[i] == "red" or self.df.columns[i] == "green" or self.df.columns[i] == "blue":
-    #             vert_out.append(verts[:,i].astype(np.uint8))
-    #         else:
-    #             vert_out.append(verts[:,i])
-
-    #     ost.write_ply(filename=outfile, field_list=vert_out, field_names=self.df.columns, triangular_faces=faces)
-        
         
     def _addDimensionToLaz(self,
                            array,
