@@ -23,5 +23,6 @@
             }
         },
     "tile":2,
-    "reduce_to":"center_of_voxel"
+    "reduce_to":"center_of_voxel",
+    "save_as":".laz"
 }

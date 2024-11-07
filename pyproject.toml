@@ -1,0 +1,45 @@
+# This section provides general project metadata that is used across
+# a variety of build tools. Notably, the version specified here is the
+# single source of truth for py4dgeo's version
+
+[project]
+name = "vasp"
+version = "0.0.1"
+description = "vasp: Voxel Attributes and Statistics for Point clouds"
+readme = "README.md"
+maintainers = [
+    { name = "Ronald Tabernig", email = "ronald.tabernig@uni-heidelberg.de" },
+]
+requires-python = ">=3.10"
+license = { file = "LICENSE.md" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Intended Audience :: Science/Research",
+]
+dependencies = [
+    "numpy>=1.14.4",
+    "laspy[laszip]>=2.3.0",
+    "plyfile=1.1",
+    "pandas>=2.1.1",
+    "scipy>=1.11.3",
+    "toml>=0.10.2"
+]
+
+# We restrict ourselves to recent Python versions.
+
+# Testing commands for our wheels
+# test-command = "pytest {package}/tests/python"
+# test-requires = ["pytest"]
+
+# The following is the configuration for the pytest test suite
+# [tool.pytest.ini_options]
+# testpaths = [
+#     "tests"
+# ]
+# filterwarnings = [
+#     "ignore:The localize method is no longer necessary, as this time zone supports the fold attribute",
+#     "ignore:distutils Version classes are deprecated. Use packaging.version instead.",
+# ]
