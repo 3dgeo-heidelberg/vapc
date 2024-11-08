@@ -2,13 +2,14 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 authors:
   - family-names: Tabernig
-  given-names: Ronald
+    given-names: Ronald
+    orcid: "0009-0002-3700-899X"
   - family-names: Albert
-  given-names: William
+    given-names: William
   - family-names: Höfle
-  given-names: Bernhard
+    given-names: Bernhard
 title: "vasp: Voxel Attributes and Statistics for Point clouds"
 version: 0.0.1
 date-released: 2024-11-11
-license: ["MIT"]
+license: "MIT"
 repository-code: "https://github.com/3dgeo-heidelberg/vasp"
