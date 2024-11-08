@@ -11,12 +11,24 @@ from scipy import stats
 class DATA_HANDLER:
     def __init__(self, infiles):
         """
-        Contains the functionality for opening and saving data.
-        The tool is currently being optimized to simplify workflows with the voxelizer.
+        Handles loading, processing, and saving of LAS/LAZ point cloud data files.
 
-        Parameters:
-        - infiles (str or list): A file path or a list of file paths to laz files that will be 
-        converted into a single dataframe.
+        The `DATA_HANDLER` class provides functionality to load multiple LAS/LAZ files,
+        convert them into a unified pandas DataFrame, and save the processed data in various
+        formats such as LAS, LAZ, and PLY. It is optimized to simplify workflows with the voxelizer
+        by managing data efficiently.
+
+        Parameters
+        ----------
+        infiles : str or list of str
+            A file path or a list of file paths to LAS/LAZ files that will be converted into a single DataFrame.
+
+        Attributes
+        ----------
+        files : list of str
+            List of input LAS/LAZ file paths.
+        df : pandas.DataFrame
+            DataFrame containing the loaded and processed point cloud data.
         """
         if isinstance(infiles, list):
             self.files = infiles
@@ -27,15 +39,21 @@ class DATA_HANDLER:
     @timeit
     def load_las_files(self):
         """
+        Loads LAS/LAZ files into a pandas DataFrame.
+
         Opens one or more LAZ or LAS files and reads them into a Pandas DataFrame.
         The data from each file is concatenated into a single DataFrame stored in `self.df`.
+
+        Returns
+        -------
+        None
         """
         all_data = []
         if type(self.files) != list:
             self.files = [self.files]
 
         for filepath in self.files:
-            print("Loading ... %s"%os.path.basename(filepath))
+            # print("Loading ... %s"%os.path.basename(filepath))
             with laspy.open(filepath) as lf:
                 las = lf.read()
                 self.las_header = las.header
@@ -57,20 +75,35 @@ class DATA_HANDLER:
     @timeit
     def save_as_las(self,
                     outfile:str,
-                    las_point_format = 6,
+                    las_point_format = 7,
                     las_version = "1.4",
                     las_scales = None,
                     las_offset = None
                     ):
         """
-        Saves the data stored in the DataFrame to a LAS file at the given path.
+        Saves the data stored in the DataFrame to a LAS file at the specified path.
 
-        Parameters:
-        - outfile (str): Path where the LAS or LAZ file will be stored.
-        - las_point_format (int, optional): Point format for the LAS file (default is 6).
-        - las_version (str, optional): LAS file version (default is "1.4").
-        - las_scales (list of float, optional): Scale factors for X, Y, Z (default is [0.00025, 0.00025, 0.00025]).
-        - las_offset (list of float, optional): Offset values for X, Y, Z (default is [X.min(), Y.min(), Z.min()]).
+        Parameters
+        ----------
+        outfile : str
+            Path where the LAS or LAZ file will be stored.
+        las_point_format : int, optional
+            Point format for the LAS file (default is 7).
+        las_version : str, optional
+            LAS file version (default is "1.4").
+        las_scales : list of float, optional
+            Scale factors for X, Y, Z (default is [0.00025, 0.00025, 0.00025]).
+        las_offset : list of float, optional
+            Offset values for X, Y, Z (default is [X.min(), Y.min(), Z.min()]).
+
+        Raises
+        ------
+        AttributeError
+            If the DataFrame `self.df` does not exist.
+
+        Returns
+        -------
+        None
         """
         if not hasattr(self, 'df'):
             raise AttributeError("DataFrame not found. Please load data before saving.")
@@ -106,7 +139,20 @@ class DATA_HANDLER:
                            array,
                            name):
         """
-        Write new attribute to laz file.
+        Adds a new attribute dimension to the LAZ file.
+
+        Writes a new attribute to the LAZ file by adding an extra dimension with the specified name and data type.
+
+        Parameters
+        ----------
+        array : np.ndarray
+            Array of values to be added as the new dimension.
+        name : str
+            Name of the new dimension.
+
+        Returns
+        -------
+        None
         """
         self.lasFile.add_extra_dim(laspy.ExtraBytesParams(
             name=name,
@@ -115,22 +161,23 @@ class DATA_HANDLER:
             ))
         self.lasFile[name] = array
 
-
-
     def _calculate_voxel_corners(self, 
                                  df_values):
         """
-        Compute corner points for all voxels.
-        Returns corner points with their respective scalar attributes.
+        Computes corner points for all voxels.
 
-        Parameters:
-            df_values (np.ndarray): An array where the first three columns are X, Y, Z 
-                                    coordinates,and the remaining columns are scalar 
-                                    attributes.
+        Calculates the corner points for each voxel based on the voxel size and the provided DataFrame values.
+        Returns corner points along with their respective scalar attributes.
 
-        Returns:
-            np.ndarray: Array of voxel corner positions and their associated scalar 
-            attributes.
+        Parameters
+        ----------
+        df_values : np.ndarray
+            An array where the first three columns are X, Y, Z coordinates, and the remaining columns are scalar attributes.
+
+        Returns
+        -------
+        np.ndarray
+            Array of voxel corner positions and their associated scalar attributes.
         """
         offset = self.voxel_size/2.
         xyz_offsets = np.array([
@@ -165,13 +212,23 @@ class DATA_HANDLER:
                     voxel_size: float, 
                     shift_to_center: bool = False):
         """
-        Saves the voxel data as cubes in a .ply file.
+        Saves the voxel data as cubes in a PLY file.
 
-        Parameters:
-            outfile (str): Path where the PLY file will be stored.
-            voxel_size (float): Edge length of the voxels to be created.
-            shift_to_center (bool, optional): Shift data to origin. Useful for visualizations 
-                                            to center the object. Defaults to False.
+        Converts the voxelized DataFrame into a mesh representation and writes it to a PLY file.
+        Optionally shifts the data to origin for better visualization.
+
+        Parameters
+        ----------
+        outfile : str
+            Path where the PLY file will be stored.
+        voxel_size : float
+            Edge length of the voxels to be created.
+        shift_to_center : bool, optional
+            Shift data to origin. Useful for visualizations to center the object. Defaults to False.
+
+        Returns
+        -------
+        None
         """
         # Adjust color values if necessary
         if "red" in self.df.columns and "green" in self.df.columns and "blue" in self.df.columns:
@@ -236,10 +293,15 @@ class DATA_HANDLER:
 
     def _generate_mesh_data(self):
         """
-        Generate mesh data from voxel information.
+        Generates mesh data from voxel information.
 
-        Returns:
-            tuple: A tuple containing:
+        Creates vertex positions and face indices based on the voxel data stored in the DataFrame.
+        This mesh data is used for exporting to 3D file formats like PLY.
+
+        Returns
+        -------
+        tuple
+            A tuple containing:
                 - np.ndarray: Array of vertex positions and scalar attributes.
                 - np.ndarray: Array of face indices.
         """
