@@ -22,7 +22,7 @@
                 "corner_of_voxel"]
             }
         },
-    "tile":2,
+    "tile":false,
     "reduce_to":"center_of_voxel",
     "save_as":".laz"
 }
