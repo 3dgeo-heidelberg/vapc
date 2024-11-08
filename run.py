@@ -1,5 +1,5 @@
 # run.py
-from src.vasp.main import main
+import vasp
 
 if __name__ == "__main__":
-    main()
+    vasp.main()
