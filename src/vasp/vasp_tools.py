@@ -4,6 +4,29 @@ from .data_handler import DATA_HANDLER
 def initiate_vasp(lazfile,
                   voxel_size,
                   origin = [0,0,0]):
+    """
+    Initializes a VASP instance with the provided LAS/LAZ file and voxel parameters.
+
+    This function creates a `DATA_HANDLER` instance to load the LAS/LAZ files,
+    initializes a `VASP` instance with the specified voxel size and origin,
+    and associates the data handler with the VASP instance.
+
+    Parameters
+    ----------
+    lazfile : str or list of str
+        Path to a single LAS/LAZ file or a list of paths to LAS/LAZ files to be processed.
+    voxel_size : float
+        Defines the size of each voxel for processing.
+    origin : list of float, optional
+        The origin coordinates [X, Y, Z] for voxelization. Defaults to [0, 0, 0].
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - vasp_pc (VASP): The initialized VASP instance.
+        - dh (DATA_HANDLER): The data handler instance containing the loaded data.
+    """
     dh = DATA_HANDLER(lazfile)
     dh.load_las_files()
     vasp_pc = VASP(float(voxel_size),
@@ -17,6 +40,38 @@ def mask(vasp_pc,
         buffer_size,
         reduce_to = False
         ):
+    """
+    Applies a spatial mask to the VASP point cloud data.
+
+    This function computes reduction points, loads the mask file, applies buffering,
+    and filters the main VASP point cloud based on the mask criteria.
+
+    Parameters
+    ----------
+    vasp_pc : VASP
+        The VASP instance containing the main point cloud data.
+    maskfile : str
+        Path to the LAS/LAZ file used as a mask.
+    segment_in_or_out : str
+        Determines whether to keep ("in") or remove ("out") points that overlap with the mask.
+        Must be either "in" or "out".
+    buffer_size : int
+        The size of the buffer to apply around the mask voxels.
+    reduce_to : str or bool, optional
+        Specifies the method to reduce the DataFrame to one value per voxel after masking.
+        Options include "closest_to_center_of_gravity", "center_of_voxel", "center_of_gravity".
+        If False, no reduction is performed (keeping all points). Defaults to False.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The filtered (and optionally reduced) DataFrame after applying the mask.
+
+    Examples
+    --------
+    >>> filtered_df = mask(vasp_pc, "path_to/mask.laz", "in", buffer_size=1, reduce_to="center_of_gravity")
+    >>> print(filtered_df.head())
+    """
     #Apply offset
     vasp_pc.compute_reduction_point()
     dh_mask = DATA_HANDLER(maskfile)
@@ -48,13 +103,65 @@ def mask(vasp_pc,
 
 def subsample(vasp_pc,
               reduce_to = "closest_to_center_of_gravity"):
+    """
+    Subsamples the VASP point cloud data by reducing it to one point per voxel.
+
+    This function sets the reduction method and performs the voxel reduction on the VASP instance.
+
+    Parameters
+    ----------
+    vasp_pc : VASP
+        The VASP instance containing the point cloud data to be subsampled.
+    reduce_to : str, optional
+        Specifies the method to reduce the DataFrame to one value per voxel.
+        Options include "closest_to_center_of_gravity", "center_of_voxel", "center_of_gravity".
+        Defaults to "closest_to_center_of_gravity".
+
+    Returns
+    -------
+    pandas.DataFrame
+        The subsampled DataFrame containing one point per voxel.
+
+    Examples
+    --------
+    >>> subsampled_df = subsample(vasp_pc, reduce_to="center_of_voxel")
+    >>> print(subsampled_df.head())
+    """
     vasp_pc.return_at = reduce_to
     vasp_pc.reduce_to_voxels()
     return vasp_pc.df
 
 def compute_attributes(vasp_pc,
                        compute,
-                       reduce_to):
+                       reduce_to = "closest_to_center_of_gravity"):
+    """
+    Computes specified attributes for the VASP point cloud data.
+
+    This function sets the attributes to be computed, performs the computations,
+    and optionally reduces the DataFrame to one value per voxel.
+
+    Parameters
+    ----------
+    vasp_pc : VASP
+        The VASP instance containing the point cloud data.
+    compute : list of str
+        List of attribute names to compute (e.g., ["point_count", "center_of_gravity"]).
+    reduce_to : str or bool
+        Specifies the method to reduce the DataFrame to one value per voxel after computing attributes.
+        Options include "closest_to_center_of_gravity", "center_of_voxel", "corner_of_voxel".
+        If False, no reduction is performed.
+        Defaults to "closest_to_center_of_gravity".
+
+    Returns
+    -------
+    pandas.DataFrame
+        The DataFrame with the newly computed attributes (and optionally reduced).
+
+    Examples
+    --------
+    >>> computed_df = compute_attributes(vasp_pc, compute=["point_count", "eigenvalues"], reduce_to="center_of_gravity")
+    >>> print(computed_df.head())
+    """
     vasp_pc.compute = compute
     vasp_pc.compute_requested_attributes()
     if reduce_to: #check if it should be reduced to voxels
@@ -65,8 +172,44 @@ def compute_attributes(vasp_pc,
 def filter_by_attributes(
         vasp_pc,
         filters,
-        reduce_to):
+        reduce_to = "closest_to_center_of_gravity"):
+    """
+    Filters the VASP point cloud data based on specified attribute conditions.
 
+    This function computes the necessary attributes, applies the filter conditions,
+    and optionally reduces the DataFrame to one value per voxel after filtering.
+
+    Parameters
+    ----------
+    vasp_pc : VASP
+        The VASP instance containing the point cloud data.
+    filters : dict
+        A dictionary where keys are attribute names and values are dictionaries
+        of filter conditions and their corresponding values. Example:
+        {
+            "point_count": {"greater_equal": 10},
+            "eigenvalue_1": {"less": .2}
+        }
+    reduce_to : str or bool
+        Specifies the method to reduce the DataFrame to one value per voxel after filtering.
+        Options include "closest_to_center_of_gravity", "center_of_voxel", "center_of_gravity".
+        If False, no reduction is performed.
+        Defaults to "closest_to_center_of_gravity".
+
+    Returns
+    -------
+    pandas.DataFrame
+        The filtered (and optionally reduced) DataFrame.
+
+    Examples
+    --------
+    >>> filters = {
+    ...     "point_count": {"greater_equal": 10},
+    ...     "eigenvalue_1": {"less": .2}
+    ... }
+    >>> filtered_df = filter_by_attributes(vasp_pc, filters, reduce_to="center_of_gravity")
+    >>> print(filtered_df.head())
+    """
     #Compute filter attributes
     vasp_pc.compute = list(filters.keys())
     vasp_pc.compute_requested_attributes()
@@ -80,25 +223,25 @@ def filter_by_attributes(
                             "eq",
                             filter_attribute[filter_condition],
                             )
-            elif filter_condition == "bigger_equal":
+            elif filter_condition == "greater_equal":
                 vasp_pc.filter_attributes(
                             fa,
                             "min_eq",
                             filter_attribute[filter_condition],
                             )
-            elif filter_condition == "bigger":
+            elif filter_condition == "greater":
                 vasp_pc.filter_attributes(
                             fa,
                             "min",
                             filter_attribute[filter_condition],
                             )
-            elif filter_condition == "smaller_equal":
+            elif filter_condition == "less_equal":
                 vasp_pc.filter_attributes(
                             fa,
                             "max_eq",
                             filter_attribute[filter_condition],
                             )
-            elif filter_condition == "smaller":
+            elif filter_condition == "less":
                 vasp_pc.filter_attributes(
                             fa,
                             "max",
@@ -117,6 +260,46 @@ def filter_by_attributes_and_compute(
         filters,
         compute,
         reduce_to):
+    """
+    Filters the VASP point cloud data based on attributes and then computes additional attributes.
+
+    This function first applies attribute-based filtering and then computes specified attributes
+    on the filtered data. It ensures that there are no redundant computations for attributes
+    already used in filtering.
+
+    Parameters
+    ----------
+    vasp_pc : VASP
+        The VASP instance containing the point cloud data.
+    filters : dict
+        A dictionary where keys are attribute names and values are dictionaries
+        of filter conditions and their corresponding values. Example:
+        {
+            "point_count": {"greater_equal": 10},
+            "eigenvalue_1": {"less": .5}
+        }
+    compute : list of str
+        List of additional attribute names to compute after filtering.
+    reduce_to : str or bool
+        Specifies the method to reduce the DataFrame to one value per voxel after filtering and computing.
+        Options include "closest_to_center_of_gravity", "center_of_voxel", "corner_of_voxel".
+        If False, no reduction is performed.
+        Defaults to "closest_to_center_of_gravity".
+
+    Returns
+    -------
+    pandas.DataFrame
+        The filtered and computed (and optionally reduced) DataFrame.
+
+    Examples
+    --------
+    >>> filters = {
+    ...     "point_count": {"greater_equal": 10}
+    ... }
+    >>> compute = ["eigenvalues", "covariance_matrix"]
+    >>> final_df = filter_by_attributes_and_compute(vasp_pc, filters, compute, reduce_to="center_of_gravity")
+    >>> print(final_df.head())
+    """
     #Lets filter first
     vasp_pc.df = filter_by_attributes(
         vasp_pc,
@@ -135,14 +318,49 @@ def filter_by_attributes_and_compute(
 def compute_statistics(
         vasp_pc,
         statistics,
-        reduce_to):
+        reduce_to = "closest_to_center_of_gravity"):
+    """
+    Computes statistical attributes for the VASP point cloud data.
+
+    This function sets the statistical attributes to be computed, performs the computations,
+    and optionally reduces the DataFrame to one value per voxel.
+
+    Parameters
+    ----------
+    vasp_pc : VASP
+        The VASP instance containing the point cloud data.
+    statistics : dict
+        A dictionary of statistical attributes to compute. Example:
+        {
+            "point_count": "mean",
+            "eigenvalues": ["mean", "std"]
+        }
+    reduce_to : str or bool
+        Specifies the method to reduce the DataFrame to one value per voxel after computing statistics.
+        Options include "closest_to_center_of_gravity", "center_of_voxel", "center_of_gravity".
+        If False, no reduction is performed.
+        Defaults to "closest_to_center_of_gravity".
+
+    Returns
+    -------
+    pandas.DataFrame
+        The DataFrame with the computed statistical attributes (and optionally reduced).
+
+    Examples
+    --------
+    >>> statistics = {
+    ...     "point_count": "mean",
+    ...     "eigenvalues": ["mean", "std"]
+    ... }
+    >>> stats_df = compute_statistics(vasp_pc, statistics, reduce_to="center_of_gravity")
+    >>> print(stats_df.head())
+    """
     vasp_pc.attributes = statistics
     vasp_pc.compute_requested_statistics_per_attributes()
     if reduce_to: #check if it should be reduced to voxels
         vasp_pc.return_at = reduce_to
         vasp_pc.reduce_to_voxels()
     return vasp_pc.df
-        
 
 
 
@@ -152,7 +370,52 @@ def use_tool(tool_name,
              voxel_size, 
              args,
              reduce_to):
-    
+    """
+    Executes a specified VASP tool on the input file and saves the output.
+
+    This function initializes the VASP and DATA_HANDLER instances, applies the chosen tool,
+    and saves the processed data in the desired output format.
+
+    Parameters
+    ----------
+    tool_name : str
+        The name of the VASP tool to execute. Options include:
+        "subsample", "mask", "compute", "filter", "filter_and_compute", "statistics".
+    infile : str
+        Path to the input LAS/LAZ file.
+    outfile : str
+        Path where the output file will be saved.
+    voxel_size : float
+        Defines the size of each voxel for processing.
+    args : dict
+        A dictionary of arguments specific to the chosen tool.
+        The expected keys vary depending on `tool_name`.
+    reduce_to : str or bool
+        Specifies the method to reduce the DataFrame to one value per voxel after processing.
+        Options include "closest_to_center_of_gravity", "center_of_voxel", "corner_of_voxel".
+        If False, no reduction is performed.
+
+    Returns
+    -------
+    None or str
+        Returns None if the tool executes successfully.
+        Returns an error message string if an unknown tool is specified.
+
+    Raises
+    ------
+    KeyError
+        If required keys are missing in the `args` dictionary.
+    ValueError
+        If an unknown `tool_name` is provided.
+
+    Examples
+    --------
+    >>> args = {
+    ...     "sub_sample_method": "center_of_gravity"
+    ... }
+    >>> use_tool("subsample", "data/input.laz", "data/output.laz", 0.5, args, "center_of_gravity")
+    >>> print(os.path.exists("data/output.laz"))
+    """
     vasp_pc,dh = initiate_vasp(infile,
                 voxel_size,
                 origin = [0,0,0])
@@ -196,8 +459,35 @@ def laSZ_to_ply(infile,
                 outfile,
                 voxel_size,
                 shift_to_center = False):
+    """
+    Converts a LAS/LAZ file to PLY format.
+
+    This function loads the LAS/LAZ file using `DATA_HANDLER` and saves it as a PLY file
+    with the specified voxel size and optional shifting to the voxel center.
+
+    Parameters
+    ----------
+    infile : str
+        Path to the input LAS/LAZ file.
+    outfile : str
+        Path where the output PLY file will be saved.
+    voxel_size : float
+        Defines the size of each voxel for processing.
+    shift_to_center : bool, optional
+        If True, shifts the points to the origin. Defaults to False.
+
+    Returns
+    -------
+    True
+
+    Examples
+    --------
+    >>> laSZ_to_ply("data/input.laz", "data/output.ply", 0.5, shift_to_center=True)
+    >>> print(os.path.exists("data/output.ply"))
+    """
     dh = DATA_HANDLER(infile)
     dh.load_las_files()
     dh.save_as_ply(outfile=outfile,
                    voxel_size=voxel_size,
                    shift_to_center=shift_to_center)
+    return True

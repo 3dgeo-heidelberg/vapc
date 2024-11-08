@@ -17,6 +17,7 @@ class VASP:
     AVAILABLE_COMPUTATIONS = [
         "big_int_index",
         "hash_index",
+        "voxel_index",
         "point_count",
         "point_density",
         "percentage_occupied",
@@ -37,7 +38,7 @@ class VASP:
              compute: list = None,
              return_at: str = "closest_to_center_of_gravity"):
         """
-        Initializes the VASP (Voxel Analysis and Processing) class.
+        Initializes the VASP (Voxel Attributes and Statistics for Point clouds) class.
 
         Parameters
         ----------
@@ -207,64 +208,6 @@ class VASP:
 
         self.voxelized = True
 
-    # @trace
-    # @timeit
-    # def compute_requested_attributes_old(self):
-    #     """
-    #     Computes attributes based on the 'compute' input list.
-
-    #     This method iterates over the list of computations specified in `self.compute` and calls
-    #     the corresponding methods to compute various attributes of the voxel data.
-
-    #     The available computations are:
-    #         - "big_int_index"
-    #         - "hash_index"
-    #         - "point_count"
-    #         - "point_density"
-    #         - "percentage_occupied"
-    #         - "covariance_matrix"
-    #         - "eigenvalues"
-    #         - "geometric_features"
-    #         - "center_of_gravity"
-    #         - "distance_to_center_of_gravity"
-    #         - "std_of_cog"
-    #         - "closest_to_center_of_gravity"
-    #         - "center_of_voxel"
-    #         - "corner_of_voxel"
-
-    #     Raises:
-    #         ValueError: If an invalid computation name is provided in `self.compute`.
-    #         Exception: If any computation method raises an exception.
-    #     """
-    #     # Mapping of computation names to methods
-    #     computations = {
-    #         "big_int_index": self.compute_big_int_index,
-    #         "hash_index": self.compute_hash_index,
-    #         "point_count": self.compute_point_count,
-    #         "point_density": self.compute_point_density,
-    #         "percentage_occupied": self.compute_percentage_occupied,
-    #         "covariance_matrix": self.compute_covariance_matrix,
-    #         "eigenvalues": self.compute_eigenvalues,
-    #         "geometric_features": self.compute_geometric_features,
-    #         "center_of_gravity": self.compute_center_of_gravity,
-    #         "distance_to_center_of_gravity": self.compute_distance_to_center_of_gravity,
-    #         "std_of_cog": self.compute_std_of_cog,
-    #         "closest_to_center_of_gravity": self.compute_closest_to_center_of_gravity,
-    #         "center_of_voxel": self.compute_center_of_voxel,
-    #         "corner_of_voxel": self.compute_corner_of_voxel
-    #     }
-
-    #     for computation_name in self.compute:
-    #         if computation_name in computations:
-    #             if getattr(self,computation_name) is True:
-    #                 continue
-    #             try:
-    #                 computations[computation_name]() 
-    #             except Exception as e:
-    #                 raise e  # Re-raise exception or handle accordingly
-    #         else:
-    #             raise ValueError(f"Invalid computation name: {computation_name}")
-
     @trace
     @timeit
     def compute_requested_attributes(self):
@@ -302,9 +245,9 @@ class VASP:
             method = getattr(self, method_name, None)
             if callable(method):
                 try:
-                    print(f"Starting computation of '{computation_name}'")
+                    # print(f"Starting computation of '{computation_name}'")
                     method()
-                    print(f"Successfully computed '{computation_name}'")
+                    # print(f"Successfully computed '{computation_name}'")
                 except Exception as e:
                     print(f"Error computing '{computation_name}': {e}")
                     raise e
@@ -352,196 +295,6 @@ class VASP:
             attributes[attr] = self.attributes[attr]
         self.attributes = attributes
         self.attributes_up_to_data = True
-
-    # @trace
-    # @timeit
-    # def compute_requested_statistics_per_attributes_old(self):
-    #     """
-    #     Computes the statistics requested per existing attribute. Can also 
-    #     be used for calculating mode. However needs more testing for now.
-    #     If works, will replace pandas based method.
-    #     Current options:
-    #         - Mean
-    #         - Median
-    #         - Mode
-    #         - Min
-    #         - Max
-    #         - Sum
-    #         - mode_count
-    #     """
-
-    #     if self.voxelized is False:
-    #         self.voxelize()
-    #         self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-    #     if self.attributes_up_to_data is False:
-    #         self.update_attribute_dictionary()
-    #     df_temp_subset = self.df[["voxel_x", "voxel_y", "voxel_z"]+list(self.attributes.keys())]
-    #     dtypes = [(col, df_temp_subset[col].dtypes) for col in df_temp_subset.columns]
-    #     data = np.array([tuple(row) for row in df_temp_subset.values], dtype=dtypes)
-    #     sorted_indices = np.lexsort((data["voxel_z"], data["voxel_y"], data["voxel_x"]))
-    #     sorted_data = data[sorted_indices]
-    #     groups, indices = np.unique(sorted_data[["voxel_x", "voxel_y", "voxel_z"]], return_index=True)#, axis=0)
-    #     all_aggregated_data = {}
-    #     all_aggregated_datalist = []
-    #     final_dtype = [
-    #         ("voxel_x", groups["voxel_x"].dtype), 
-    #         ("voxel_y", groups["voxel_y"].dtype), 
-    #         ("voxel_z", groups["voxel_z"].dtype)
-    #         ]
-    #     local_names_col_names = {}
-    #     local_names = []
-    #     print("Computing stats")
-    #     for attr in self.attributes.keys():
-    #         if not type(self.attributes[attr]) is list:
-    #             self.attributes[attr] = [self.attributes[attr]]
-    #         for enum,stat_request in enumerate(self.attributes[attr]):
-    #             if "mode_count" in stat_request:
-    #                 print(self.attributes[attr])
-    #                 percentage = float(stat_request.split(",")[-1])
-    #                 start = time.time()
-    #                 sorted_data_attr = sorted_data[attr]
-    #                 sorted_data_attr = np.array(sorted_data_attr, dtype=int)
-    #                 split_arr = np.array_split(sorted_data_attr, indices[1:])
-    #                 bc = list(map(np.bincount, split_arr))
-    #                 bc_sum = list(map(sum, bc))
-    #                 bc_prop = list(map(np.divide, bc, bc_sum))
-    #                 comparaison = list(map(lambda sublist: sublist > percentage, bc_prop))
-    #                 aggregated_data = list(map(sum, comparaison))
-    #                 end = time.time()
-    #                 print(f"Computing 'mode_count' for attribute '{attr}' took: {end - start:.4f} sec")
-    #             elif stat_request == "mode":
-    #                 start = time.time()
-    #                 aggregated_data = list(map(lambda i: np.apply_along_axis(lambda x: [np.bincount(x.astype(int)).argmax()], axis=0, arr=sorted_data[attr][indices[i]:indices[i + 1]])[0], range(len(indices) - 1)))
-    #                 aggregated_data.append(pd.Series(sorted_data[attr][indices[-1]:]).mode()[0])
-    #                 end = time.time()
-    #                 print(f"Computing 'mode' for attribute '{attr}' took: {end - start:.4f} sec")
-    #             elif stat_request == "sum":
-    #                 aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].sum() for i in range(len(indices) - 1)]
-    #                 aggregated_data.append(sorted_data[attr][indices[-1]:].sum())
-    #             elif stat_request == "mean":
-    #                 aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].mean() for i in range(len(indices) - 1)]
-    #                 aggregated_data.append(sorted_data[attr][indices[-1]:].mean())
-    #             elif stat_request == "median":
-    #                 aggregated_data = [np.median(sorted_data[attr][indices[i]:indices[i + 1]]) for i in range(len(indices) - 1)]
-    #                 aggregated_data.append(np.median(sorted_data[attr][indices[-1]:]))
-    #             elif stat_request == "min":
-    #                 aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].min() for i in range(len(indices) - 1)]
-    #                 aggregated_data.append(sorted_data[attr][indices[-1]:].min())
-    #             elif stat_request == "max":
-    #                 aggregated_data = [sorted_data[attr][indices[i]:indices[i + 1]].max() for i in range(len(indices) - 1)]
-    #                 aggregated_data.append(sorted_data[attr][indices[-1]:].max())
-    #             else:
-    #                 print("Aggregation type unknown for %s"%attr)
-    #                 self.drop_columns(attr)
-    #                 continue
-
-    #             # all_aggregated_data[attr+"_%s"%enum] = aggregated_data
-    #             all_aggregated_datalist.append(aggregated_data)
-    #             final_dtype += [(attr+"_%s"%enum,np.array(aggregated_data).dtype)]
-    #             local_names_col_names.update({attr+"_%s"%enum:"%s_%s"%(attr,stat_request)})
-    #             local_names.append(attr+"_%s"%enum)
-    #             #If attributes should not be saved with stat indication activate lower line.
-    #             # self.drop_columns += ["%s_%s"%attr,self.attributes[attr]]
-    #             # local_names.append(attr)
-    #     combined_data = [tuple(list(group) + [agg[i] for agg in all_aggregated_datalist]) for i, group in enumerate(groups)]
-
-    #     result_array = np.array(combined_data, dtype=final_dtype)
-    #     grouped = pd.DataFrame(result_array,columns = ["voxel_x", "voxel_y", "voxel_z"]+local_names)
-    #     grouped.rename(columns=local_names_col_names, inplace=True)
-    #     self.df = self.df.merge(grouped, how="left", on=["voxel_x", "voxel_y", "voxel_z"])
-    #     self.attributes_per_voxel = True
-
-    # @trace
-    # @timeit
-    # def compute_requested_statistics_per_attributes_pandas(self):
-    #     """
-    #     Computes the requested statistics per voxel for specified attributes.
-
-    #     This method computes various statistics (e.g., mean, median, mode) for each attribute in `self.attributes`,
-    #     grouped by voxel indices ('voxel_x', 'voxel_y', 'voxel_z').
-
-    #     The available statistics are:
-    #         - "mean"
-    #         - "median"
-    #         - "mode"
-    #         - "min"
-    #         - "max"
-    #         - "sum"
-    #         - "mode_count"
-
-    #     For "mode_count", an additional parameter can be specified to define the percentage threshold.
-
-    #     Notes:
-    #         - If the data is not voxelized (`self.voxelized` is False), the method will voxelize the data first.
-    #         - If the attribute dictionary is not updated (`self.attributes_up_to_data` is False), it will be updated.
-
-    #     Raises:
-    #         KeyError: If required columns are missing in `self.df`.
-    #         ValueError: If invalid statistics are specified.
-
-    #     Side Effects:
-    #         - Updates `self.df` by merging the computed statistics.
-    #         - Sets `self.attributes_per_voxel` to True.
-    #     """
-    #     # Ensure data is voxelized
-    #     if not self.voxelized:
-    #         self.voxelize()
-    #         self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-
-    #     # Update attribute dictionary if needed
-    #     if not self.attributes_up_to_data:
-    #         self.update_attribute_dictionary()
-
-    #     # Check required columns
-    #     required_columns = ["voxel_x", "voxel_y", "voxel_z"] + list(self.attributes.keys())
-    #     missing_columns = [col for col in required_columns if col not in self.df.columns]
-    #     if missing_columns:
-    #         raise KeyError(f"Missing columns in `self.df`: {missing_columns}")
-
-    #     # Subset the DataFrame
-    #     df_subset = self.df[required_columns]
-
-    #     # Group the data by voxel indices
-    #     grouped = df_subset.groupby(['voxel_x', 'voxel_y', 'voxel_z'])
-
-    #     # Prepare to collect aggregated data
-    #     agg_dict = {}
-    #     for attr, stats_list in self.attributes.items():
-    #         if not isinstance(stats_list, list):
-    #             stats_list = [stats_list]
-    #         for stat in stats_list:
-    #             if "mode_count" in stat:
-    #                 # Extract percentage threshold from 'mode_count,percentage'
-    #                 try:
-    #                     _, percentage_str = stat.split(',')
-    #                     percentage = float(percentage_str)
-    #                 except ValueError:
-    #                     raise ValueError(f"Invalid 'mode_count' specification for attribute '{attr}': '{stat}'")
-    #                 # Define custom aggregation function
-    #                 def mode_count_func(x):
-    #                     counts = x.value_counts(normalize=True)
-    #                     return (counts >= percentage).sum()
-    #                 agg_name = f"{attr}_mode_count_{percentage}"
-    #                 agg_dict[agg_name] = (attr, mode_count_func)
-    #             elif stat == "mode":
-    #                 agg_name = f"{attr}_mode"
-    #                 agg_dict[agg_name] = (attr, lambda x: x.mode().iloc[0] if not x.mode().empty else np.nan)
-    #             elif stat in ["mean", "median", "min", "max", "sum"]:
-    #                 agg_name = f"{attr}_{stat}"
-    #                 agg_dict[agg_name] = (attr, stat)
-    #             else:
-    #                 print(f"Unknown aggregation type '{stat}' for attribute '{attr}'. Skipping.")
-    #                 continue
-
-    #     print("Computing statistics per voxel...")
-
-    #     # Perform aggregation
-    #     aggregated = grouped.agg(**agg_dict).reset_index()
-
-    #     # Merge aggregated data back into self.df
-    #     self.df = self.df.merge(aggregated, on=['voxel_x', 'voxel_y', 'voxel_z'], how='left')
-
-    #     self.attributes_per_voxel = True
 
     @trace
     @timeit
@@ -610,13 +363,13 @@ class VASP:
         # Prepare to collect aggregated data
         aggregated_data = {}
         attribute_names = []
-        print("Computing statistics per voxel...")
+        # print("Computing statistics per voxel...")
 
         for attr, stats_list in self.attributes.items():
             if not isinstance(stats_list, list):
                 stats_list = [stats_list]
             for stat in stats_list:
-                print(f"Computing '{stat}' for attribute '{attr}'")
+                # print(f"Computing '{stat}' for attribute '{attr}'")
                 # start_time = time.time()
                 aggregated_values = []
                 for i in range(len(indices)):
@@ -688,6 +441,15 @@ class VASP:
         """
         Computes a big int index for all occupied voxels (as a int).
         Do not set n > 1000000000, errors will occur.
+
+        Parameters
+        ----------
+        n : int, optional
+            The base multiplier for voxel indexing. Defaults to 1000000000.
+
+        Notes
+        -----
+        - Adds a new column 'big_int_index' to `self.df`.
         """
         if self.voxelized is False:
             self.voxelize()
@@ -701,6 +463,10 @@ class VASP:
     def compute_voxel_index(self):
         """
         Computes a unique voxel index using voxel coordinates as a tuple.
+
+        Notes
+        -----
+        - Adds a new column 'voxel_index' to `self.df`.
         """
         if not self.voxelized:
             self.voxelize()
@@ -712,59 +478,6 @@ class VASP:
             self.df['voxel_z']
         ))
         self.voxel_index = True
-
-    #Could be removed???
-    # @trace
-    # @timeit
-    # def mask_by_voxels(self,
-    #                  mask_file
-    #                  ):
-    #     if self.big_int_index is False:
-    #         self.compute_big_int_index()
-    #         self.drop_columns += ["big_int_index"]
-    #     #Load mask file
-    #     dh = DATA_HANDLER([mask_file],
-    #                     attributes={})
-    #     dh.load_las_files()
-    #     vasp_mask = VASP(self.voxel_size,
-    #                     self.origin,
-    #                     {})
-    #     vasp_mask.get_data_from_data_handler(dh)
-    #     vasp_mask.voxelize()
-    #     self.compute_hash_index()
-    #     #mask_indices = np.unique(vasp_mask.df[["voxel_x", "voxel_y", "voxel_z"]],axis = 1)
-    #     mask_indices = np.unique(vasp_mask.df["hash_index"])
-    #     vasp_mask.df = vasp_mask.df[self.df["hash_index"].isin(mask_indices)]
-    #     #vasp_mask.df[["voxel_x", "voxel_y", "voxel_z"]] = mask_indices
-    #     vasp_mask.compute_big_int_index()
-    #     vasp_mask.compute_hash_index()
-    #     hash_indices = np.unique(vasp_mask.df["hash_index"])
-    #     print(hash_indices)
-    #     #mask by hash index
-    #     print(self.df)
-    #     print("before filtering:",self.df.shape)
-    #     self.df = self.df[self.df["hash_index"].isin(hash_indices)]
-    #     print("after hash filtering:",self.df.shape)
-    #     #remove wrong values by big int index
-    #     big_int_indices = np.unique(vasp_mask.df["big_int_index"])
-    #     self.compute_big_int_index()
-    #     self.df = self.df[self.df["big_int_index"].isin(big_int_indices)]
-    #     print("after big int filtering:",self.df.shape)
-    #     self.df = self.df.drop(["voxel_x", "voxel_y", "voxel_z","big_int_index","hash_index"],axis = 1)
-
-    @trace
-    @timeit
-    def compute_voxel_buffer_old(self, buffer_size:int = 1):
-        if self.voxelized is False:
-            self.voxelize()
-            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-            
-        coords = np.array((self.df["voxel_x"],self.df["voxel_y"],self.df["voxel_z"])).T
-        offsets = np.arange(-buffer_size, buffer_size + 1)
-        all_combinations = np.array(np.meshgrid(offsets, offsets, offsets)).T.reshape(-1, 3)
-        expanded_coords = coords[:, np.newaxis, :] + all_combinations
-        result = expanded_coords.reshape(-1, 3)
-        self.df = pd.DataFrame(np.array(result), columns = ["voxel_x", "voxel_y", "voxel_z"])
 
     @trace
     @timeit
@@ -819,7 +532,7 @@ class VASP:
     @timeit
     def select_by_mask(self,
                      vasp_mask,
-                     mask_attribute = "big_int_index",
+                     mask_attribute = "voxel_index",
                      segment_in_or_out = "in"):
         """
         Filters the data points based on a mask provided by another VASP instance.
@@ -884,7 +597,7 @@ class VASP:
         else:
             raise ValueError("Parameter 'segment_in_or_out' must be either 'in' or 'out'.")
 
-        print("Points after filtering:",self.df.shape)
+        # print("Points after filtering:",self.df.shape)
         self.df = self.df.drop(["voxel_x", "voxel_y", "voxel_z",mask_attribute],axis = 1)
         self.voxelized = False
 
@@ -898,6 +611,18 @@ class VASP:
                              n = 2**100):
         """
         Computes the hash index for all occupied voxels.
+
+        Parameters
+        ----------
+        p1, p2, p3 : int, optional
+            Large prime numbers used in the hashing function.
+        n : int, optional
+            Modulus for the hashing function. Defaults to 2**100.
+
+        Notes
+        -----
+        - This method adds a new column 'hash_index' to `self.df`.
+        - Be cautious with the size of `n` and the prime numbers to avoid integer overflows.
         """
         if self.voxelized is False:
             self.voxelize()
@@ -909,7 +634,9 @@ class VASP:
     @timeit
     def compute_point_count(self):
         """
-        Computes the point count for all occupied voxels. (Number of points within each voxel)
+        Computes the point count for all occupied voxels.
+
+        This method calculates the number of points within each voxel and adds a new column 'point_count' to `self.df`.
         """
         if self.voxelized is False:
             self.voxelize()
@@ -924,6 +651,8 @@ class VASP:
     def compute_point_density(self):
         """
         Computes the point density for all occupied voxels.
+
+        Adds a new column 'point_density' to `self.df`, calculated as point count divided by voxel volume.
         """
         if self.point_count is False:
             self.compute_point_count()
@@ -935,33 +664,63 @@ class VASP:
     @timeit
     def compute_percentage_occupied(self):
         """
-        Computes the space occupied by voxels within the voxel space bounding box.
-        Percentage occupied = Number of voxels occupied / Number of voxels within bounding box * 100
+        Computes the percentage of space occupied by voxels within the voxel space bounding box.
+
+        The percentage occupied is calculated as:
+            Percentage occupied = (Number of occupied voxels / Total number of voxels in bounding box) * 100
+
+        Notes
+        -----
+        - Requires the big integer index to be computed.
+        - Prints the percentage of voxel space occupied.
         """
-        if self.big_int_index is False:
-            self.compute_big_int_index()
-            self.drop_columns += ["big_int_index"]
+        if self.voxel_index is False:
+            self.compute_voxel_index()
+            self.drop_columns += ["voxel_index"]
         x_min, x_max = self.df["voxel_x"].min(),self.df["voxel_x"].max()
         y_min, y_max = self.df["voxel_y"].min(),self.df["voxel_y"].max()
         z_min, z_max = self.df["voxel_z"].min(),self.df["voxel_z"].max()
-        x_extent,y_extent,z_extent = x_max - x_min, y_max - y_min, z_max - z_min
+        x_extent,y_extent,z_extent = x_max - x_min + 1 , y_max - y_min + 1 , z_max - z_min + 1
         nr_of_voxels_within_bounding_box = x_extent*y_extent*z_extent
-        nr_of_occupied_voxels = len(np.unique(self.df["big_int_index"]))
+        nr_of_occupied_voxels = len(np.unique(self.df["voxel_index"]))
         self.percentage_occupied = round(nr_of_occupied_voxels/nr_of_voxels_within_bounding_box*100,2)
         print("%s percent of the voxel space is occupied"%self.percentage_occupied)
 
    
-    def compute_distance_to_center_of_gravity(self):
-        x_diff = self.df["X"]-self.df["cog_x"]
-        y_diff = self.df["Y"]-self.df["cog_y"]
-        z_diff = self.df["Z"]-self.df["cog_z"]
-        distances = np.sqrt(x_diff**2+y_diff**2+z_diff**2)
-        self.df["distance"] = distances
+    def compute_distance_to_center_of_gravity(self):    
+        """
+        Computes the Euclidean distance from each point to the center of gravity of its voxel.
+
+        This method calculates the distance between each point ('X', 'Y', 'Z') and the corresponding
+        voxel's center of gravity ('cog_x', 'cog_y', 'cog_z').
+
+        Adds a new column 'distance' to `self.df`.
+        """
+        if self.center_of_gravity is False:
+            self.compute_center_of_gravity()
+            self.drop_columns += ["cog_x", "cog_y", "cog_z"]
+
+        self.df["distance"] = np.sqrt(
+            (self.df["X"] - self.df["cog_x"])**2 +
+            (self.df["Y"] - self.df["cog_y"])**2 +
+            (self.df["Z"] - self.df["cog_z"])**2
+                )
         self.distance_to_center_of_gravity = True
 
     @trace
     @timeit
     def compute_closest_to_center_of_gravity(self):
+        """
+        Identifies the point closest to the center of gravity within each voxel.
+
+        This method determines which point in each voxel is nearest to the voxel's center of gravity
+        and retains only those points.
+
+        Notes
+        -----
+        - Adds 'min_distance' to `self.df`.
+        - Merges the minimum distance information back into `self.df`.
+        """
         if not self.center_of_gravity:
             self.compute_center_of_gravity()
             self.drop_columns += ["cog_x", "cog_y", "cog_z"]
@@ -979,6 +738,10 @@ class VASP:
     def compute_center_of_gravity(self):
         """
         Computes the center of gravity for all occupied voxels.
+
+        Notes
+        -----
+        - Adds 'cog_x', 'cog_y', 'cog_z' to `self.df`.
         """
         if self.voxelized is False:
             self.voxelize()
@@ -993,7 +756,11 @@ class VASP:
     @timeit
     def compute_std_of_cog(self):
         """
-        Computes the center of gravity for all occupied voxels.
+        Computes the standard deviation of the center of gravity for all occupied voxels.
+
+        Notes
+        -----
+        - Adds 'std_x', 'std_y', 'std_z' to `self.df`.
         """
         if self.voxelized is False:
             self.voxelize()
@@ -1009,6 +776,10 @@ class VASP:
     def compute_center_of_voxel(self):
         """
         Computes the voxel center for all occupied voxels.
+
+        Notes
+        -----
+        - Adds 'center_x', 'center_y', 'center_z' to `self.df`.
         """
         if self.voxelized is False:
             self.voxelize()
@@ -1021,6 +792,10 @@ class VASP:
     def compute_corner_of_voxel(self):
         """
         Computes the minx, miny, minz corner for all occupied voxels.
+
+        Notes
+        -----
+        - Adds 'corner_x', 'corner_y', 'corner_z' to `self.df`.
         """
         if self.voxelized is False:
             self.voxelize()
@@ -1032,7 +807,11 @@ class VASP:
     @timeit
     def compute_covariance_matrix(self):
         """
-        Computes the covarianve matrix for all occupied voxels.
+        Computes the covariance matrix for all occupied voxels.
+
+        Notes
+        -----
+        - Adds covariance matrix components ('cov_xx', 'cov_xy', ..., 'cov_zz') to `self.df`.
         """
         def _covariance(df):
             cov_matrix = df[["X", "Y", "Z"]].cov()
@@ -1052,7 +831,12 @@ class VASP:
     def compute_eigenvalues(self):
         """
         Computes eigenvalues for all occupied voxels.
-        !!! Eigenvectors are also calculated, might be interesting to add
+
+        !!! Eigenvectors are also calculated, might be interesting to add to output
+
+        Notes
+        -----
+        - Adds 'Eigenvalue_1', 'Eigenvalue_2', 'Eigenvalue_3' to `self.df`.
         """
         def _eigenvalues(df):
             cov_matrix = df[["X", "Y", "Z"]].cov()
@@ -1080,6 +864,12 @@ class VASP:
     def compute_geometric_features(self):
         """
         Computes geometric features for all occupied voxels.
+
+        Notes
+        -----
+        - Adds various geometric feature columns to `self.df`, such as 'Sum_of_Eigenvalues',
+        'Omnivariance', 'Eigentropy', 'Anisotropy', 'Planarity', 'Linearity',
+        'Surface_Variation', and 'Sphericity'.
         """
         if self.eigenvalues is False:
             self.compute_eigenvalues()
@@ -1101,12 +891,19 @@ class VASP:
     @timeit
     def reduce_to_voxels(self): 
         """
-        Reduce the DataFrame to only on value per Voxel. return_at defines what the X,Y, and Z coordinate 
+        Reduces the DataFrame to only one value per voxel. `return_at` defines what the X, Y, and Z coordinate 
         of the output will be.
-        return_at overwrites X,Y,Z with:
-            The center of each voxel containing points ("center_of_voxel") 
-            The minx,miny,minz corner of each voxel containing points a("corner_of_voxel") 
-            The center of gravity computed within each voxel containing points ("center_of_gravity") 
+        `return_at` overwrites X, Y, Z with:
+            - The center of each voxel containing points ("center_of_voxel") 
+            - The minx, miny, minz corner of each voxel containing points ("corner_of_voxel") 
+            - The center of gravity computed within each voxel containing points ("center_of_gravity") 
+            - The point closest to the center of gravity computed within each voxel containing points ("closest_to_center_of_gravity") 
+
+        Notes
+        -----
+        - Removes voxel columns and updates coordinate columns based on `return_at`.
+        - Drops duplicate entries.
+        - Sets `self.reduced` to True after reduction.
         """
         if self.return_at == "center_of_voxel":
             if self.center_of_voxel is False or not hasattr(self.df,"center_x"):
@@ -1158,10 +955,10 @@ class VASP:
         This method modifies the DataFrame `self.df` by applying a filter condition based on the specified attribute, value, and filter type. 
         Filters include:
             equality ('eq') 
-            minimum ('min') 
-            minimum or equal ('min_eq') 
-            maximum ('max')
-            maximum or equal ('max_eq')
+            greater than ('min') 
+            greater than or equal ('min_eq') 
+            less than ('max')
+            less than or equal ('max_eq')
 
         Parameters:
         - filter_attribute (str): The attribute (column name) of the DataFrame to apply the filter on.
@@ -1196,6 +993,52 @@ class VASP:
     def compute_clusters(self,
                          cluster_distance,
                          cluster_by = ["voxel_x","voxel_y","voxel_z"]):
+        
+        """
+        Groups data points into clusters based on spatial proximity within a specified distance.
+
+        This method identifies clusters in the point cloud data where points are within
+        `cluster_distance` of each other. It utilizes the KDTree algorithm for efficient
+        neighbor searches. Each cluster is assigned a unique ID, and the size of each
+        cluster is calculated.
+
+        Parameters
+        ----------
+        cluster_distance : float
+            The maximum distance between points to be considered part of the same cluster.
+        cluster_by : list of str, optional
+            List of column names in `self.df` that represent spatial coordinates used
+            for clustering. Defaults to ["voxel_x", "voxel_y", "voxel_z"].
+
+        Returns
+        -------
+        None
+
+        Updates
+        -------
+        self.df : pandas.DataFrame
+            The DataFrame is updated in-place and includes two new columns:
+            - "cluster_id": An integer representing the cluster ID for each point.
+            - "cluster_size": The number of points in the cluster to which each point belongs.
+
+        Notes
+        -----
+        - The method uses a fixed number of nearest neighbors (`nr_of_neighbours = 50`)
+        during the KDTree query.
+        - Clusters are merged if they share points within the specified `cluster_distance`.
+        - An internal function `_update_existing_objects` is defined to handle the
+        merging of overlapping clusters.
+
+        Raises
+        ------
+        KeyError
+            If any of the columns specified in `cluster_by` are not present in `self.df`.
+
+        Examples
+        --------
+        >>> vasp_instance.compute_clusters(cluster_distance=1.0)
+        >>> print(vasp_instance.df[['cluster_id', 'cluster_size']])
+        """
         def _update_existing_objects(O, indices, relevantPoints):
             obj, counts = np.unique(O[indices[relevantPoints]], return_counts=True)
             existingObjects = obj[obj > 0]
