@@ -1,0 +1,9 @@
+ipykernel
+nbsphinx
+nbsphinx-link
+pandas
+pytest
+pytest-cov
+sphinx
+sphinx_mdinclude
+sphinx_rtd_theme
