@@ -1,0 +1,126 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+.pytest_cache/v/
+
+# Doc build
+docs/build/
+docs/source/_static/
+docs/source/_templates/
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pylint
+.pylint.d/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs and Editor Specific
+.idea/
+.vscode/
+*.swp
+
+# MacOS and Windows files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Static assets generated in docs build
+docs/build/html/_sources/
+docs/build/html/_static/
+docs/build/doctrees/
+docs/build/html/
+docs/build/
+
+# Temp files for Sphinx and Jupyter
+docs/build/.buildinfo
+docs/build/.buildinfo.bak
+docs/source/*.nblink
+docs/source/*.ipynb
+
+# Pycache
+src/**/__pycache__/
+src/**/__pycache__/*.pyc
+
+# Exclude test data
+tests/test_data/*.las
+tests/test_data/*.laz
+
+# Configuration files
+templates/*.json
+
+# Python package build artifacts
+*.egg-info/
+build/
+dist/
+*.egg
+*.whl
+
+# Git config files
+.git/
+.git/*
