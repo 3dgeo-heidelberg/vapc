@@ -111,6 +111,9 @@ src/**/__pycache__/*.pyc
 tests/test_data/*.las
 tests/test_data/*.laz
 
+# Test output
+tests/test_data_output/
+
 # Configuration files
 templates/*.json
 
