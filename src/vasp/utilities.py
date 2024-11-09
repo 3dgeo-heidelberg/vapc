@@ -1,35 +1,40 @@
 from functools import wraps
 import time
-import os
-import toml
+# import os
+# import toml #not needed atm
+import pkg_resources
 
 def get_version():
-    """
-    Retrieves the version of the VASP package from pyproject.toml.
+    return pkg_resources.get_distribution('vasp').version
 
-    Returns
-    -------
-    str
-        The version string of the VASP package.
 
-    Raises
-    ------
-    FileNotFoundError
-        If the pyproject.toml file is not found.
-    KeyError
-        If the version key is missing in the pyproject.toml file.
-    """
-    try:
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        print(project_root)
-        pyproject_path = os.path.join(project_root, 'pyproject.toml')
-        with open(pyproject_path, 'r') as f:
-            pyproject = toml.load(f)
-        return pyproject['project']['version']
-    except FileNotFoundError:
-        raise FileNotFoundError("pyproject.toml not found. Ensure it exists in the project root.")
-    except KeyError:
-        raise KeyError("Version not found in pyproject.toml. Ensure 'project.version' is specified.")
+# def get_version():
+#     """
+#     Retrieves the version of the VASP package from pyproject.toml.
+
+#     Returns
+#     -------
+#     str
+#         The version string of the VASP package.
+
+#     Raises
+#     ------
+#     FileNotFoundError
+#         If the pyproject.toml file is not found.
+#     KeyError
+#         If the version key is missing in the pyproject.toml file.
+#     """
+#     try:
+#         project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+#         print(project_root)
+#         pyproject_path = os.path.join(project_root, 'pyproject.toml')
+#         with open(pyproject_path, 'r') as f:
+#             pyproject = toml.load(f)
+#         return pyproject['project']['version']
+#     except FileNotFoundError:
+#         raise FileNotFoundError("pyproject.toml not found. Ensure it exists in the project root.")
+#     except KeyError:
+#         raise KeyError("Version not found in pyproject.toml. Ensure 'project.version' is specified.")
 
 # __version__ = get_version()
 # from importlib import metadata
