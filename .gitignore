@@ -100,7 +100,6 @@ docs/build/
 # Temp files for Sphinx and Jupyter
 docs/build/.buildinfo
 docs/build/.buildinfo.bak
-docs/source/*.nblink
 docs/source/*.ipynb
 
 # Pycache

@@ -11,4 +11,5 @@ VASP documentation
 
    intro
    basic_tools
+   build_pipelines
    faq

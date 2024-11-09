@@ -10,4 +10,5 @@ including an example to use each tool from a notebook or the command line.
     tool_3d_mask
     tool_compute_attributes
     tool_compute_attributes_save_as_ply
-    
+    tool_compute_statistics
+    tool_filter
