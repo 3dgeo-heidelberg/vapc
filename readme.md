@@ -23,23 +23,16 @@ The **main objective** of `vasp` is to bundle and provide different methods of 3
   <a href="#license">License</a>
 </p>
 
-# Tools provided by vasp
-* Voxelisation of point clouds
-* Computation of [voxel based attributes](#list-of-additional-attributes)
-* Computation of [voxel based statistics](#list-of-statistics-for-existing-attribues) for existing attributes
-* Voxel based [3D masking of point clouds](#temp)
+# Some usefull tools provided by `vasp`
+* [Voxelisation](./jupyter/tool_voxelize_point_cloud.ipynb) of point clouds
+* Computation of [voxel based attributes](./jupyter/tool_compute_attributes.ipynb)
+* Computation of [voxel based statistics](./jupyter/tool_compute_statistics.ipynb) for existing attributes
+* Voxel based [3D masking of point clouds](./jupyter/tool_3d_mask.ipynb)
+* Voxel attribute based [filtering of point clouds](./jupyter/tool_filter.ipynb)
 
+# Examples of setting up you own pipeline with `vasp`
+* Compute statist
 
-### List of additional attributes:
-  * point_count,  point_density,  percentage_occupied
-  * covariance_matrix,  eigenvalues,  geometric_features
-  * big_int_index,hash_index
-  * center_of_gravity, center_of_voxel, corner_of_voxel
-
-### List of statistics for existing attribues:
-  * Min, Mean, Max
-  * Mode, Median, Sum
-  
 # Installation
 Clone and run this application:
 ```bash
@@ -51,11 +44,15 @@ $ cd vasp
 
 # Installing the release version using pip
 $ python -m pip install .
+
+#OR if editable needed
+python -m pip install -v --editable .
+
 ```
 
 # Documentation of software usage<br>
 Examplary [Jupyter Notebooks](./jupyter) are available. <br>
-Using vasp from the [command line](./cmd) with configure files is explained in the [how-to](./cmd/how_to_command_line.md). <br>
+Using vasp from the [command line](./cmd) with configure files is possible and will soon be explained in the [how-to](./cmd/how_to_command_line.md). <br>
 
 # Download
 A small test dataset is currently provided in [test_data](./test_data).
