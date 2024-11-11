@@ -122,7 +122,9 @@ def las_create_3DTiles(lazfile,
         z_min = np.floor(extent[2])
         z_max = np.ceil(extent[5])
         if x_min == 0 and x_max == 0 and y_min == 0 and y_max == 0 and z_min == 0 and z_max == 0:
-            assert False, "extent not defined in header of las/laz file"
+            x_min,y_min,z_min = las.xyz.min(axis = 0)
+            x_max,y_max,z_max = las.xyz.max(axis = 0)
+            # assert False, "extent not defined in header of las/laz file"
     #Find number of Tiles for x and y direction
     diffX = x_max - x_min
     diffY = y_max - y_min

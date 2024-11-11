@@ -1,1 +1,4 @@
-.. mdinclude:: ../../readme.md
+Documentation
+==========================================
+
+.. mdinclude:: ./readme_rtd.md
