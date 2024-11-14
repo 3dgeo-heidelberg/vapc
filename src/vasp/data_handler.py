@@ -110,7 +110,7 @@ class DATA_HANDLER:
         if las_scales is None:
             las_scales = [0.00025, 0.00025, 0.00025]
         if las_offset is None:
-            las_offset = [self.df["X"].min(), self.df["Y"].min(), self.df["Z"].min()]
+            las_offset = np.min(self.df[["X","Y","Z"]].values,axis = 0)
         
         new_header = laspy.LasHeader(point_format = las_point_format,version = las_version)
         new_header.offsets = las_offset
