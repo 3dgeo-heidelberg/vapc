@@ -24,6 +24,7 @@ The **main objective** of `vasp` is to bundle and provide different methods of 3
 </p>
 
 # Installation
+Using VASP requires Python 3.10 or higher.
 Clone and run this application:
 ```bash
 # Clone this repository
