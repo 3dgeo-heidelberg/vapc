@@ -10,7 +10,7 @@
 
 `vaps` is a `Python` library for voxel-based point cloud operations.
 
-3D/4D point clouds are used in many fields and applications. Efficient processing of dense time series of point clouds or large study sites are require tools for automatic analysis. Moreover, methods considering the full 4D (3D space + time) data are being developed in research and need to be made available in an accessible way with flexible integration into existent workflows.
+3D/4D point clouds are used in many fields and applications. Efficient processing of dense time series of point clouds or large study sites requires tools for automatic analysis. Moreover, methods considering the full 4D (3D space + time) data are being developed in research and need to be made available in an accessible way with flexible integration into existing workflows.
 
 The **main objective** of `vaps` is to bundle and provide different methods of 3D/4D point cloud processing using a voxel-based structure in a dedicated, comprehensive Python library.
 
@@ -24,6 +24,7 @@ The **main objective** of `vaps` is to bundle and provide different methods of 3
 </p>
 
 # Installation
+Using VASP requires Python 3.10 or higher.
 Clone and run this application:
 ```bash
 # Clone this repository
