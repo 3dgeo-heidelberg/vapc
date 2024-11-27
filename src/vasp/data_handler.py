@@ -59,6 +59,7 @@ class DATA_HANDLER:
                 self.las_header = las.header
                 self.attributes = list(las.points.array.dtype.names)
                 list(map(self.attributes.remove,["X","Y","Z"])) #remove XYZ as xyz should be read directly to not scale and shift the points in an extra step.
+                #using vls data one might have to remove the extrab dim
                 df = pd.DataFrame(
                                 data = np.array([las.x,las.y,las.z]+[las[attr] for attr in self.attributes]).T,
                                 columns = ["X", "Y", "Z"] + self.attributes)

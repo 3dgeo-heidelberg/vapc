@@ -1,18 +1,18 @@
-<p align="center">Welcome to ...
-  <img src="https://github.com/3dgeo-heidelberg/vasp/blob/main/img/vasp_logo_temp.png?raw=true" height="150px">
+<!-- <p align="center">Welcome to ...
+  <img src="https://github.com/3dgeo-heidelberg/vaps/blob/main/img/vaps_logo_temp.png?raw=true" height="150px">
 </p>
 <!-- <h1 align="center">
   <br>
-  VASP
+  vaps
   <br>
 </h1> -->
-<h1 align="center"><strong>V</strong>oxel <strong>A</strong>ttributes and <strong>S</strong>tatistics for <strong>P</strong>oint clouds</h4>
+<h1 align="center"><strong>V</strong>oxel <strong>A</strong>Analysis for <strong>P</strong>oint <strong>C</strong>clouds</h4> -->
 
-`vasp` is a `Python` library for voxel-based point cloud operations.
+`vaps` is a `Python` library for voxel-based point cloud operations.
 
 3D/4D point clouds are used in many fields and applications. Efficient processing of dense time series of point clouds or large study sites are require tools for automatic analysis. Moreover, methods considering the full 4D (3D space + time) data are being developed in research and need to be made available in an accessible way with flexible integration into existent workflows.
 
-The **main objective** of `vasp` is to bundle and provide different methods of 3D/4D point cloud processing using a voxel-based structure in a dedicated, comprehensive Python library.
+The **main objective** of `vaps` is to bundle and provide different methods of 3D/4D point cloud processing using a voxel-based structure in a dedicated, comprehensive Python library.
 
 <p align="center">
   <a href="#key-features">Key Features</a> •
@@ -30,7 +30,7 @@ Clone and run this application:
 $ git clone https://github.com/3dgeo-heidelberg/vasp.git
 
 # Go into the repository
-$ cd vasp
+$ cd vaps
 
 # Installing the release version using pip
 $ python -m pip install .
@@ -43,7 +43,7 @@ python -m pip install -v --editable .
 ## Jupyter Notebooks
 Examplary [Jupyter Notebooks](./jupyter) are available.
 
-### Some usefull tools provided by `vasp`
+### Some usefull tools provided by `vaps`
 * Subsampling of point clouds
 * Voxelisation of point clouds
 * Computation of voxel based attributes
@@ -51,11 +51,11 @@ Examplary [Jupyter Notebooks](./jupyter) are available.
 * Voxel based 3D masking of point clouds
 * Voxel attribute based filtering of point clouds
 
-### Examples of setting up you own pipeline with `vasp`
+### Examples of setting up you own pipeline with `vaps`
 * First filter by point count and than compute statistics
 
-## Command line `vasp`
-Using vasp from the [command line](./cmd) with configure files is already possible and will soon be explained in the [how-to](./cmd/how_to_command_line.md). 
+## Command line `vaps`
+Using vaps from the [command line](./cmd) with configure files is already possible and will soon be explained in the [how-to](./cmd/how_to_command_line.md). 
 
 # Download
 A small test dataset is currently provided in [test_data](./test_data).

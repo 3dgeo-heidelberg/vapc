@@ -6,10 +6,15 @@ authors:
     orcid: "0009-0002-3700-899X"
   - family-names: Albert
     given-names: William
+    orcid: "0009-0007-6019-4336"
+  - family-names: Weiser
+    given-names: Hannah
+    orcid: "0000-0003-3256-7311"
   - family-names: Höfle
     given-names: Bernhard
-title: "vasp: Voxel Attributes and Statistics for Point clouds"
+    orcid: "0000-0001-5849-1461"
+title: "vaps - Voxel Analysis for Point Clouds"
 version: 0.0.1
-date-released: 2024-11-11
+date-released: 2024-12-01
 license: "MIT"
-repository-code: "https://github.com/3dgeo-heidelberg/vasp"
+repository-code: "https://github.com/3dgeo-heidelberg/vaps"

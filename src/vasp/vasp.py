@@ -975,17 +975,21 @@ class VASP:
         min_max_eq = min_max_eq.lower()
         if min_max_eq == "eq":
             self.df = self.df[self.df[filter_attribute]==filter_value]
+            return self.df[filter_attribute]==filter_value
         elif min_max_eq == "min":
             self.df = self.df[self.df[filter_attribute]>filter_value]
+            return self.df[filter_attribute]>filter_value
         elif min_max_eq == "min_eq":
             self.df = self.df[self.df[filter_attribute]>=filter_value]
+            return self.df[filter_attribute]>=filter_value
         elif min_max_eq == "max":
             self.df = self.df[self.df[filter_attribute]<filter_value]
+            return self.df[filter_attribute]<filter_value
         elif min_max_eq == "max_eq":
             self.df = self.df[self.df[filter_attribute]<=filter_value]
+            return self.df[filter_attribute]<=filter_value
         else:
             print("Filter invalid, use eq, min, min_eq, max, and max_eq only.")
-
 
 
     @trace
