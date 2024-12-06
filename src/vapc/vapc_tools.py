@@ -1,15 +1,15 @@
-from .vasp import VASP
-from .data_handler import DATA_HANDLER
+from .vapc import Vapc
+from .datahandler import DataHandler
 
-def initiate_vasp(lazfile,
+def initiate_vapc(lazfile,
                   voxel_size,
                   origin = [0,0,0]):
     """
-    Initializes a VASP instance with the provided LAS/LAZ file and voxel parameters.
+    Initializes a Vapc instance with the provided LAS/LAZ file and voxel parameters.
 
     This function creates a `DATA_HANDLER` instance to load the LAS/LAZ files,
-    initializes a `VASP` instance with the specified voxel size and origin,
-    and associates the data handler with the VASP instance.
+    initializes a `Vapc` instance with the specified voxel size and origin,
+    and associates the data handler with the Vapc instance.
 
     Parameters
     ----------
@@ -24,32 +24,32 @@ def initiate_vasp(lazfile,
     -------
     tuple
         A tuple containing:
-        - vasp_pc (VASP): The initialized VASP instance.
+        - vapc_pc (Vapc): The initialized Vapc instance.
         - dh (DATA_HANDLER): The data handler instance containing the loaded data.
     """
-    dh = DATA_HANDLER(lazfile)
+    dh = DataHandler(lazfile)
     dh.load_las_files()
-    vasp_pc = VASP(float(voxel_size),
+    vapc_pc = Vapc(float(voxel_size),
                     origin)      
-    vasp_pc.get_data_from_data_handler(dh)
-    return vasp_pc, dh
+    vapc_pc.get_data_from_data_handler(dh)
+    return vapc_pc, dh
 
-def mask(vasp_pc,
+def mask(vapc_pc,
         maskfile,
         segment_in_or_out,
         buffer_size,
         reduce_to = False
         ):
     """
-    Applies a spatial mask to the VASP point cloud data.
+    Applies a spatial mask to the Vapc point cloud data.
 
     This function computes reduction points, loads the mask file, applies buffering,
-    and filters the main VASP point cloud based on the mask criteria.
+    and filters the main Vapc point cloud based on the mask criteria.
 
     Parameters
     ----------
-    vasp_pc : VASP
-        The VASP instance containing the main point cloud data.
+    vapc_pc : Vapc
+        The Vapc instance containing the main point cloud data.
     maskfile : str
         Path to the LAS/LAZ file used as a mask.
     segment_in_or_out : str
@@ -69,49 +69,49 @@ def mask(vasp_pc,
 
     Examples
     --------
-    >>> filtered_df = mask(vasp_pc, "path_to/mask.laz", "in", buffer_size=1, reduce_to="center_of_gravity")
+    >>> filtered_df = mask(vapc_pc, "path_to/mask.laz", "in", buffer_size=1, reduce_to="center_of_gravity")
     >>> print(filtered_df.head())
     """
     #Apply offset
-    vasp_pc.compute_reduction_point()
-    dh_mask = DATA_HANDLER(maskfile)
+    vapc_pc.compute_reduction_point()
+    dh_mask = DataHandler(maskfile)
     dh_mask.load_las_files()
-    vasp_mask = VASP(vasp_pc.voxel_size,
+    vapc_mask = Vapc(vapc_pc.voxel_size,
                     [0,0,0])
-    vasp_mask.get_data_from_data_handler(dh_mask)
+    vapc_mask.get_data_from_data_handler(dh_mask)
     #Apply offset
-    vasp_mask.compute_reduction_point()
-    min_reduction_point = (min([vasp_pc.reduction_point[0],vasp_mask.reduction_point[0]]),min([vasp_pc.reduction_point[1],vasp_mask.reduction_point[1]]),min([vasp_pc.reduction_point[2],vasp_mask.reduction_point[2]]))
+    vapc_mask.compute_reduction_point()
+    min_reduction_point = (min([vapc_pc.reduction_point[0],vapc_mask.reduction_point[0]]),min([vapc_pc.reduction_point[1],vapc_mask.reduction_point[1]]),min([vapc_pc.reduction_point[2],vapc_mask.reduction_point[2]]))
     # print(min_reduction_point)
-    vasp_pc.reduction_point = min_reduction_point
-    vasp_pc.compute_offset()
-    vasp_mask.reduction_point = min_reduction_point
-    vasp_mask.compute_offset()
+    vapc_pc.reduction_point = min_reduction_point
+    vapc_pc.compute_offset()
+    vapc_mask.reduction_point = min_reduction_point
+    vapc_mask.compute_offset()
     #Buffer mask voxelized point cloud
-    vasp_mask.compute_voxel_buffer(buffer_size = int(buffer_size))
-    vasp_mask.df = vasp_mask.buffer_df
+    vapc_mask.compute_voxel_buffer(buffer_size = int(buffer_size))
+    vapc_mask.df = vapc_mask.buffer_df
     #Select by mask
-    vasp_pc.select_by_mask(vasp_mask,
+    vapc_pc.select_by_mask(vapc_mask,
                            mask_attribute = "voxel_index",
                            segment_in_or_out = segment_in_or_out)
     #Undo offset
-    vasp_pc.compute_offset()
+    vapc_pc.compute_offset()
     if reduce_to: #check if it should be reduced to voxels
-        vasp_pc.return_at = reduce_to
-        vasp_pc.reduce_to_voxels()
-    return vasp_pc.df
+        vapc_pc.return_at = reduce_to
+        vapc_pc.reduce_to_voxels()
+    return vapc_pc.df
 
-def subsample(vasp_pc,
+def subsample(vapc_pc,
               reduce_to = "closest_to_center_of_gravity"):
     """
-    Subsamples the VASP point cloud data by reducing it to one point per voxel.
+    Subsamples the Vapc point cloud data by reducing it to one point per voxel.
 
-    This function sets the reduction method and performs the voxel reduction on the VASP instance.
+    This function sets the reduction method and performs the voxel reduction on the Vapc instance.
 
     Parameters
     ----------
-    vasp_pc : VASP
-        The VASP instance containing the point cloud data to be subsampled.
+    vapc_pc : Vapc
+        The Vapc instance containing the point cloud data to be subsampled.
     reduce_to : str, optional
         Specifies the method to reduce the DataFrame to one value per voxel.
         Options include "closest_to_center_of_gravity", "center_of_voxel", "center_of_gravity".
@@ -124,26 +124,26 @@ def subsample(vasp_pc,
 
     Examples
     --------
-    >>> subsampled_df = subsample(vasp_pc, reduce_to="center_of_voxel")
+    >>> subsampled_df = subsample(vapc_pc, reduce_to="center_of_voxel")
     >>> print(subsampled_df.head())
     """
-    vasp_pc.return_at = reduce_to
-    vasp_pc.reduce_to_voxels()
-    return vasp_pc.df
+    vapc_pc.return_at = reduce_to
+    vapc_pc.reduce_to_voxels()
+    return vapc_pc.df
 
-def compute_attributes(vasp_pc,
+def compute_attributes(vapc_pc,
                        compute,
                        reduce_to = "closest_to_center_of_gravity"):
     """
-    Computes specified attributes for the VASP point cloud data.
+    Computes specified attributes for the Vapc point cloud data.
 
     This function sets the attributes to be computed, performs the computations,
     and optionally reduces the DataFrame to one value per voxel.
 
     Parameters
     ----------
-    vasp_pc : VASP
-        The VASP instance containing the point cloud data.
+    vapc_pc : Vapc
+        The Vapc instance containing the point cloud data.
     compute : list of str
         List of attribute names to compute (e.g., ["point_count", "center_of_gravity"]).
     reduce_to : str or bool
@@ -159,30 +159,30 @@ def compute_attributes(vasp_pc,
 
     Examples
     --------
-    >>> computed_df = compute_attributes(vasp_pc, compute=["point_count", "eigenvalues"], reduce_to="center_of_gravity")
+    >>> computed_df = compute_attributes(vapc_pc, compute=["point_count", "eigenvalues"], reduce_to="center_of_gravity")
     >>> print(computed_df.head())
     """
-    vasp_pc.compute = compute
-    vasp_pc.compute_requested_attributes()
+    vapc_pc.compute = compute
+    vapc_pc.compute_requested_attributes()
     if reduce_to: #check if it should be reduced to voxels
-        vasp_pc.return_at = reduce_to
-        vasp_pc.reduce_to_voxels()
-    return vasp_pc.df
+        vapc_pc.return_at = reduce_to
+        vapc_pc.reduce_to_voxels()
+    return vapc_pc.df
 
 def filter_by_attributes(
-        vasp_pc,
+        vapc_pc,
         filters,
         reduce_to = "closest_to_center_of_gravity"):
     """
-    Filters the VASP point cloud data based on specified attribute conditions.
+    Filters the Vapc point cloud data based on specified attribute conditions.
 
     This function computes the necessary attributes, applies the filter conditions,
     and optionally reduces the DataFrame to one value per voxel after filtering.
 
     Parameters
     ----------
-    vasp_pc : VASP
-        The VASP instance containing the point cloud data.
+    vapc_pc : Vapc
+        The Vapc instance containing the point cloud data.
     filters : dict
         A dictionary where keys are attribute names and values are dictionaries
         of filter conditions and their corresponding values. Example:
@@ -207,42 +207,42 @@ def filter_by_attributes(
     ...     "point_count": {"greater_equal": 10},
     ...     "eigenvalue_1": {"less": .2}
     ... }
-    >>> filtered_df = filter_by_attributes(vasp_pc, filters, reduce_to="center_of_gravity")
+    >>> filtered_df = filter_by_attributes(vapc_pc, filters, reduce_to="center_of_gravity")
     >>> print(filtered_df.head())
     """
     #Compute filter attributes
-    vasp_pc.compute = list(filters.keys())
-    vasp_pc.compute_requested_attributes()
+    vapc_pc.compute = list(filters.keys())
+    vapc_pc.compute_requested_attributes()
     #Filter attribute
     for fa in filters.keys():
         filter_attribute = filters[fa]
         for filter_condition in filter_attribute.keys():
             if filter_condition == "equal":
-                vasp_pc.filter_attributes(
+                vapc_pc.filter_attributes(
                             fa,
                             "eq",
                             filter_attribute[filter_condition],
                             )
             elif filter_condition == "greater_equal":
-                vasp_pc.filter_attributes(
+                vapc_pc.filter_attributes(
                             fa,
                             "min_eq",
                             filter_attribute[filter_condition],
                             )
             elif filter_condition == "greater":
-                vasp_pc.filter_attributes(
+                vapc_pc.filter_attributes(
                             fa,
                             "min",
                             filter_attribute[filter_condition],
                             )
             elif filter_condition == "less_equal":
-                vasp_pc.filter_attributes(
+                vapc_pc.filter_attributes(
                             fa,
                             "max_eq",
                             filter_attribute[filter_condition],
                             )
             elif filter_condition == "less":
-                vasp_pc.filter_attributes(
+                vapc_pc.filter_attributes(
                             fa,
                             "max",
                             filter_attribute[filter_condition],
@@ -250,18 +250,18 @@ def filter_by_attributes(
             else:
                 return False
     if reduce_to: #check if it should be reduced to voxels
-        vasp_pc.return_at = reduce_to
-        vasp_pc.reduce_to_voxels()
-    return vasp_pc.df
+        vapc_pc.return_at = reduce_to
+        vapc_pc.reduce_to_voxels()
+    return vapc_pc.df
 
 
 def filter_by_attributes_and_compute(
-        vasp_pc,
+        vapc_pc,
         filters,
         compute,
         reduce_to):
     """
-    Filters the VASP point cloud data based on attributes and then computes additional attributes.
+    Filters the Vapc point cloud data based on attributes and then computes additional attributes.
 
     This function first applies attribute-based filtering and then computes specified attributes
     on the filtered data. It ensures that there are no redundant computations for attributes
@@ -269,8 +269,8 @@ def filter_by_attributes_and_compute(
 
     Parameters
     ----------
-    vasp_pc : VASP
-        The VASP instance containing the point cloud data.
+    vapc_pc : Vapc
+        The Vapc instance containing the point cloud data.
     filters : dict
         A dictionary where keys are attribute names and values are dictionaries
         of filter conditions and their corresponding values. Example:
@@ -297,12 +297,12 @@ def filter_by_attributes_and_compute(
     ...     "point_count": {"greater_equal": 10}
     ... }
     >>> compute = ["eigenvalues", "covariance_matrix"]
-    >>> final_df = filter_by_attributes_and_compute(vasp_pc, filters, compute, reduce_to="center_of_gravity")
+    >>> final_df = filter_by_attributes_and_compute(vapc_pc, filters, compute, reduce_to="center_of_gravity")
     >>> print(final_df.head())
     """
     #Lets filter first
-    vasp_pc.df = filter_by_attributes(
-        vasp_pc,
+    vapc_pc.df = filter_by_attributes(
+        vapc_pc,
         filters,
         reduce_to = False)
     
@@ -311,24 +311,24 @@ def filter_by_attributes_and_compute(
         compute = list(filter((filter_attr).__ne__, compute))
     
     #And compute attributes after
-    return compute_attributes(vasp_pc,
+    return compute_attributes(vapc_pc,
                        compute,
                        reduce_to)
 
 def compute_statistics(
-        vasp_pc,
+        vapc_pc,
         statistics,
         reduce_to = "closest_to_center_of_gravity"):
     """
-    Computes statistical attributes for the VASP point cloud data.
+    Computes statistical attributes for the Vapc point cloud data.
 
     This function sets the statistical attributes to be computed, performs the computations,
     and optionally reduces the DataFrame to one value per voxel.
 
     Parameters
     ----------
-    vasp_pc : VASP
-        The VASP instance containing the point cloud data.
+    vapc_pc : Vapc
+        The Vapc instance containing the point cloud data.
     statistics : dict
         A dictionary of statistical attributes to compute. Example:
         {
@@ -352,15 +352,15 @@ def compute_statistics(
     ...     "point_count": "mean",
     ...     "eigenvalues": ["mean", "std"]
     ... }
-    >>> stats_df = compute_statistics(vasp_pc, statistics, reduce_to="center_of_gravity")
+    >>> stats_df = compute_statistics(vapc_pc, statistics, reduce_to="center_of_gravity")
     >>> print(stats_df.head())
     """
-    vasp_pc.attributes = statistics
-    vasp_pc.compute_requested_statistics_per_attributes()
+    vapc_pc.attributes = statistics
+    vapc_pc.compute_requested_statistics_per_attributes()
     if reduce_to: #check if it should be reduced to voxels
-        vasp_pc.return_at = reduce_to
-        vasp_pc.reduce_to_voxels()
-    return vasp_pc.df
+        vapc_pc.return_at = reduce_to
+        vapc_pc.reduce_to_voxels()
+    return vapc_pc.df
 
 
 
@@ -371,15 +371,15 @@ def use_tool(tool_name,
              args,
              reduce_to):
     """
-    Executes a specified VASP tool on the input file and saves the output.
+    Executes a specified Vapc tool on the input file and saves the output.
 
-    This function initializes the VASP and DATA_HANDLER instances, applies the chosen tool,
+    This function initializes the Vapc and DATA_HANDLER instances, applies the chosen tool,
     and saves the processed data in the desired output format.
 
     Parameters
     ----------
     tool_name : str
-        The name of the VASP tool to execute. Options include:
+        The name of the Vapc tool to execute. Options include:
         "subsample", "mask", "compute", "filter", "filter_and_compute", "statistics".
     infile : str
         Path to the input LAS/LAZ file.
@@ -416,39 +416,39 @@ def use_tool(tool_name,
     >>> use_tool("subsample", "data/input.laz", "data/output.laz", 0.5, args, "center_of_gravity")
     >>> print(os.path.exists("data/output.laz"))
     """
-    vasp_pc,dh = initiate_vasp(infile,
+    vapc_pc,dh = initiate_vapc(infile,
                 voxel_size,
                 origin = [0,0,0])
 
     if tool_name == "subsample":
-        dh.df = subsample(vasp_pc= vasp_pc,
+        dh.df = subsample(vapc_pc= vapc_pc,
                   reduce_to=args["sub_sample_method"]
                   )
         
     elif tool_name == "mask":
-        dh.df = mask(vasp_pc=vasp_pc,
+        dh.df = mask(vapc_pc=vapc_pc,
                      maskfile=args["maskfile"],
                      segment_in_or_out=args["segment_in_or_out"],
                      buffer_size=args["buffer_size"],
                      reduce_to=reduce_to)
         
     elif tool_name == "compute":
-        dh.df = compute_attributes(vasp_pc = vasp_pc,
+        dh.df = compute_attributes(vapc_pc = vapc_pc,
                                    compute = args["compute"],
                                    reduce_to = reduce_to)
         
     elif tool_name == "filter":
-        dh.df = filter_by_attributes(vasp_pc = vasp_pc,
+        dh.df = filter_by_attributes(vapc_pc = vapc_pc,
                                    filters = args["filters"],
                                    reduce_to = reduce_to)
         
     elif tool_name == "filter_and_compute":
-        dh.df = filter_by_attributes_and_compute(vasp_pc = vasp_pc,
+        dh.df = filter_by_attributes_and_compute(vapc_pc = vapc_pc,
                                    filters = args["filters"],
                                    compute = args["compute"],
                                    reduce_to = reduce_to)
     elif tool_name == "statistics":
-        dh.df = compute_statistics(vasp_pc = vasp_pc,
+        dh.df = compute_statistics(vapc_pc = vapc_pc,
                                    statistics = args["statistics"],
                                    reduce_to = reduce_to)
     else:
@@ -485,7 +485,7 @@ def laSZ_to_ply(infile,
     >>> laSZ_to_ply("data/input.laz", "data/output.ply", 0.5, shift_to_center=True)
     >>> print(os.path.exists("data/output.ply"))
     """
-    dh = DATA_HANDLER(infile)
+    dh = DataHandler(infile)
     dh.load_las_files()
     dh.save_as_ply(outfile=outfile,
                    voxel_size=voxel_size,

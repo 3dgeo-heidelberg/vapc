@@ -1,28 +1,28 @@
-from vasp.vasp_tools import *
-from vasp.las_split_append_merge import *
+from vapc.vapc_tools import *
+from vapc.las_split_append_merge import *
 import datetime
 import json
 import argparse
-from vasp.utilities import *
-# from vasp import __version__
+from vapc.utilities import *
+# from vapc import __version__
 
 
 
 @trace
 @timeit
-def do_vasp_on_files(file, 
+def do_vapc_on_files(file, 
                 out_dir,
                 voxel_size, 
-                vasp_command,
+                vapc_command,
                 tile = False, 
                 reduce_to = "closest_to_center_of_gravity",
                 save_as = ".laz",
                 doc = True):
     """
-    Executes VASP operations on LAS/LAZ files based on the provided configuration.
+    Executes Vapc operations on LAS/LAZ files based on the provided configuration.
 
     This function handles the voxelization process, optional tiling for large datasets,
-    applies VASP tools, and saves the processed data in the desired format. It also
+    applies Vapc tools, and saves the processed data in the desired format. It also
     manages temporary files and directories used during processing.
 
     Parameters
@@ -33,8 +33,8 @@ def do_vasp_on_files(file,
         Directory where output files and configurations will be saved.
     voxel_size : float
         Defines the size of each voxel for processing.
-    vasp_command : dict
-        Dictionary containing VASP command configurations, including the tool to use
+    vapc_command : dict
+        Dictionary containing Vapc command configurations, including the tool to use
         and any additional arguments.
     tile : bool, optional
         If True, enables tiling for processing large datasets by partitioning into smaller tiles.
@@ -62,7 +62,7 @@ def do_vasp_on_files(file,
     ValueError
         If invalid parameters are provided.
     KeyError
-        If required keys are missing in the vasp_command dictionary.
+        If required keys are missing in the vapc_command dictionary.
 
     Notes
     -----
@@ -75,8 +75,8 @@ def do_vasp_on_files(file,
     timestamp = now.strftime("%Y_%m_%d_%H-%M-%S")
 
     #document settings
-    config = vasp_command
-    config["vasp_version"] = get_version()
+    config = vapc_command
+    config["vapc_version"] = get_version()
     config["file"] = file
     config["out_dir"] = out_dir
     config["voxel_size"] = voxel_size
@@ -84,8 +84,8 @@ def do_vasp_on_files(file,
     config["tile"] = tile
     config["save_as"] = save_as
     #generate filepaths
-    outfile = os.path.join(out_dir,vasp_command["tool"]+"_%s.las"%timestamp)
-    outconfig = os.path.join(out_dir,vasp_command["tool"]+"_%s_cfg.json"%timestamp)
+    outfile = os.path.join(out_dir,vapc_command["tool"]+"_%s.las"%timestamp)
+    outconfig = os.path.join(out_dir,vapc_command["tool"]+"_%s_cfg.json"%timestamp)
     #Use temporary tiling for big datasets
     if tile:
         tile_dir = os.path.join(out_dir,"temp_tiles")
@@ -109,12 +109,12 @@ def do_vasp_on_files(file,
         for sub_tile in all_tiles:
             if sub_tile == False:
                 continue
-            use_tool(vasp_command["tool"],
+            use_tool(vapc_command["tool"],
                      sub_tile,
                      sub_tile,
                      voxel_size=voxel_size,
-                     args=vasp_command["args"],
-                     reduce_to = vasp_command["reduce_to"])
+                     args=vapc_command["args"],
+                     reduce_to = vapc_command["reduce_to"])
 
         tiles_without_buffer =  las_remove_buffer(tile_dir)
 
@@ -128,12 +128,12 @@ def do_vasp_on_files(file,
         os.rmdir(tile_dir)        
     #work without tiles
     else:
-        use_tool(vasp_command["tool"],
+        use_tool(vapc_command["tool"],
                  file,
                  outfile,
                  voxel_size=voxel_size,
-                 args=vasp_command["args"],
-                 reduce_to = vasp_command["reduce_to"])
+                 args=vapc_command["args"],
+                 reduce_to = vapc_command["reduce_to"])
 
     #save configuration for documentation
     if doc:
@@ -161,20 +161,20 @@ def do_vasp_on_files(file,
 
 def parse_args():
     """
-    Parses command-line arguments for the VASP command.
+    Parses command-line arguments for the Vapc command.
 
     Returns
     -------
     argparse.Namespace
         An object containing the parsed command-line arguments.
     """
-    parser = argparse.ArgumentParser(description="Use VASP.")
-    parser.add_argument("config_file", help="Configuration of the VASP command")
+    parser = argparse.ArgumentParser(description="Use Vapc.")
+    parser.add_argument("config_file", help="Configuration of the Vapc command")
     return parser.parse_args()
 
 def load_config(config_file):
     """
-    Loads the VASP command configuration from a JSON file.
+    Loads the Vapc command configuration from a JSON file.
 
     Parameters
     ----------
@@ -184,17 +184,17 @@ def load_config(config_file):
     Returns
     -------
     dict
-        A dictionary containing the VASP command configurations.
+        A dictionary containing the Vapc command configurations.
     """
     with open(config_file, 'r') as file:
         return json.load(file)
 
 def main():
     """
-    The main function that orchestrates the VASP processing workflow.
+    The main function that orchestrates the Vapc processing workflow.
 
     This function parses command-line arguments, loads the configuration,
-    and executes the VASP operations on the specified files.
+    and executes the Vapc operations on the specified files.
 
     Raises
     ------
@@ -203,7 +203,7 @@ def main():
 
     Examples
     --------
-    To run VASP with a configuration file:
+    To run Vapc with a configuration file:
     
     >>> python run.py config.json
     """
@@ -214,10 +214,10 @@ def main():
     config = load_config(args.config_file)
 
     # Apply command
-    do_vasp_on_files(file=config["infile"],
+    do_vapc_on_files(file=config["infile"],
                     out_dir=config["outdir"],
                     voxel_size=config["voxel_size"],
-                    vasp_command=config["vasp_command"],
+                    vapc_command=config["vapc_command"],
                     tile = config["tile"],
                     reduce_to=config["reduce_to"],
                     save_as=config["save_as"]

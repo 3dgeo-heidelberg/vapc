@@ -1,4 +1,4 @@
-#For VASP:
+#For Vapc:
 import numpy as np
 import math
 from scipy import stats
@@ -6,14 +6,14 @@ from scipy.spatial import KDTree
 import pandas as pd
 # import pandasql as ps
 from .utilities import trace,timeit
-from .data_handler import DATA_HANDLER
+from .datahandler import DataHandler
 from itertools import combinations
 import time
 import sys
 
 
 
-class VASP:
+class Vapc:
     AVAILABLE_COMPUTATIONS = [
         "big_int_index",
         "hash_index",
@@ -38,7 +38,7 @@ class VASP:
              compute: list = None,
              return_at: str = "closest_to_center_of_gravity"):
         """
-        Initializes the VASP (Voxel Attributes and Statistics for Point clouds) class.
+        Initializes the Vapc (Voxel Analysis for Point clouds) class.
 
         Parameters
         ----------
@@ -137,7 +137,7 @@ class VASP:
     @timeit
     def get_data_from_data_handler(self, data_handler):
         """
-        Moves the dataframe from the data handler to the VASP instance.
+        Moves the dataframe from the data handler to the Vapc instance.
 
         After this operation, data_handler will no longer have the 'df' attribute.
 
@@ -531,19 +531,19 @@ class VASP:
     @trace
     @timeit
     def select_by_mask(self,
-                     vasp_mask,
+                     vapc_mask,
                      mask_attribute = "voxel_index",
                      segment_in_or_out = "in"):
         """
-        Filters the data points based on a mask provided by another VASP instance.
+        Filters the data points based on a mask provided by another Vapc instance.
 
         This method either keeps or removes points that overlap with the mask, depending on the
         `segment_in_or_out` parameter.
 
         Parameters
         ----------
-        vasp_mask : VASP
-            Another instance of the VASP class that provides the mask for filtering.
+        vapc_mask : Vapc
+            Another instance of the Vapc class that provides the mask for filtering.
         mask_attribute : str, optional
             The attribute used for masking. Defaults to "voxel_index".
         segment_in_or_out : str, optional
@@ -564,15 +564,15 @@ class VASP:
         - Removes voxel columns and `mask_attribute` from `self.df` after filtering.
         """
 
-        if not hasattr(self, 'df') or not hasattr(vasp_mask, 'df'):
-            raise AttributeError("Both `self.df` and `vasp_mask.df` must exist.")
+        if not hasattr(self, 'df') or not hasattr(vapc_mask, 'df'):
+            raise AttributeError("Both `self.df` and `vapc_mask.df` must exist.")
 
         if self.voxelized is False:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
 
-        if vasp_mask.voxelized is False:
-            vasp_mask.voxelize()
+        if vapc_mask.voxelized is False:
+            vapc_mask.voxelize()
 
         if mask_attribute not in self.df.columns:
             # Attempt to compute the attribute
@@ -581,18 +581,18 @@ class VASP:
             else:
                 raise AttributeError(f"Attribute '{mask_attribute}' not found and cannot be computed.")
 
-        if mask_attribute not in vasp_mask.df.columns:
-            if hasattr(vasp_mask, f"compute_{mask_attribute}"):
-                getattr(vasp_mask, f"compute_{mask_attribute}")()
+        if mask_attribute not in vapc_mask.df.columns:
+            if hasattr(vapc_mask, f"compute_{mask_attribute}"):
+                getattr(vapc_mask, f"compute_{mask_attribute}")()
             else:
-                raise AttributeError(f"Attribute '{mask_attribute}' not found in `vasp_mask` and cannot be computed.")
+                raise AttributeError(f"Attribute '{mask_attribute}' not found in `vapc_mask` and cannot be computed.")
 
         #mask by attribute
         if segment_in_or_out == "in":
-            mask_values = set(vasp_mask.df[mask_attribute])
+            mask_values = set(vapc_mask.df[mask_attribute])
             self.df = self.df[self.df[mask_attribute].isin(mask_values)].reset_index(drop=True)
         elif segment_in_or_out == "out":
-            mask_values = set(vasp_mask.df[mask_attribute])
+            mask_values = set(vapc_mask.df[mask_attribute])
             self.df = self.df[~self.df[mask_attribute].isin(mask_values)].reset_index(drop=True)
         else:
             raise ValueError("Parameter 'segment_in_or_out' must be either 'in' or 'out'.")
@@ -975,21 +975,17 @@ class VASP:
         min_max_eq = min_max_eq.lower()
         if min_max_eq == "eq":
             self.df = self.df[self.df[filter_attribute]==filter_value]
-            return self.df[filter_attribute]==filter_value
         elif min_max_eq == "min":
             self.df = self.df[self.df[filter_attribute]>filter_value]
-            return self.df[filter_attribute]>filter_value
         elif min_max_eq == "min_eq":
             self.df = self.df[self.df[filter_attribute]>=filter_value]
-            return self.df[filter_attribute]>=filter_value
         elif min_max_eq == "max":
             self.df = self.df[self.df[filter_attribute]<filter_value]
-            return self.df[filter_attribute]<filter_value
         elif min_max_eq == "max_eq":
             self.df = self.df[self.df[filter_attribute]<=filter_value]
-            return self.df[filter_attribute]<=filter_value
         else:
             print("Filter invalid, use eq, min, min_eq, max, and max_eq only.")
+
 
 
     @trace
@@ -1040,8 +1036,8 @@ class VASP:
 
         Examples
         --------
-        >>> vasp_instance.compute_clusters(cluster_distance=1.0)
-        >>> print(vasp_instance.df[['cluster_id', 'cluster_size']])
+        >>> vapc_instance.compute_clusters(cluster_distance=1.0)
+        >>> print(vapc_instance.df[['cluster_id', 'cluster_size']])
         """
         def _update_existing_objects(O, indices, relevantPoints):
             obj, counts = np.unique(O[indices[relevantPoints]], return_counts=True)

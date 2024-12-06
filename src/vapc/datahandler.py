@@ -1,6 +1,5 @@
 #For Data Handler:
 from plyfile import PlyData, PlyElement
-
 import laspy
 import os
 import numpy as np
@@ -8,12 +7,12 @@ import pandas as pd
 from .utilities import trace,timeit
 from scipy import stats
 
-class DATA_HANDLER:
+class DataHandler:
     def __init__(self, infiles):
         """
         Handles loading, processing, and saving of LAS/LAZ point cloud data files.
 
-        The `DATA_HANDLER` class provides functionality to load multiple LAS/LAZ files,
+        The `DataHandler` class provides functionality to load multiple LAS/LAZ files,
         convert them into a unified pandas DataFrame, and save the processed data in various
         formats such as LAS, LAZ, and PLY. It is optimized to simplify workflows with the voxelizer
         by managing data efficiently.

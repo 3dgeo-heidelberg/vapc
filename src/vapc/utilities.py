@@ -5,17 +5,17 @@ import time
 import pkg_resources
 
 def get_version():
-    return pkg_resources.get_distribution('vasp').version
+    return pkg_resources.get_distribution('vapc').version
 
 
 # def get_version():
 #     """
-#     Retrieves the version of the VASP package from pyproject.toml.
+#     Retrieves the version of the vapc package from pyproject.toml.
 
 #     Returns
 #     -------
 #     str
-#         The version string of the VASP package.
+#         The version string of the vapc package.
 
 #     Raises
 #     ------
