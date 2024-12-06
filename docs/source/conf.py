@@ -1,12 +1,12 @@
 """
-cd vasp/docs
+cd vapc/docs
 make.bat html
 start build/html/index.html
 """
 
 
 import os
-import vasp
+import vapc
 import subprocess
 import sys
 
@@ -23,10 +23,10 @@ os.environ["XDG_DATA_DIRS"] = os.path.abspath("../tests/data")
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "vasp"
+project = "vapc"
 copyright = "2024, 3DGeo Research Group, Heidelberg University"
 author = "Ronald Tabernig"
-release = vasp.get_version()
+release = vapc.get_version()
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
