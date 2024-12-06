@@ -1,11 +1,11 @@
 # This section provides general project metadata that is used across
 # a variety of build tools. Notably, the version specified here is the
-# single source of truth for vasps's version
+# single source of truth for vapc's version
 
 [project]
-name = "vasp"
+name = "vapc"
 version = "0.0.1"
-description = "vasp: Voxel Attributes and Statistics for Point clouds"
+description = "vapc: Voxel Analysis for Point Clouds"
 readme = "README.md"
 maintainers = [
     { name = "Ronald Tabernig", email = "ronald.tabernig@uni-heidelberg.de" },
