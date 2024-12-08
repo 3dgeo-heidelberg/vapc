@@ -1,7 +1,7 @@
 <p align="center">
   <a href="#structure">Structure</a> •
   <a href="#the-data-handler">Data handler</a> •
-  <a href="#vasp">Vasp</a> •
+  <a href="#vapc">Vasp</a> •
   <a href="#full-example-of-a-config-file">Full config file example</a> •
   <a href="#command-line-workflow-example">Run example</a> •
   <a href="#how-to-filter">Filtering</a> •
@@ -11,18 +11,18 @@
 
 
 # Structure
-VASP can be used by calling the main.py and providing a config (.json) file.
-The fundamental structure of VASP is divided into two parts. The data handler and the vasp computation part. 
+Vapc can be used by calling the main.py and providing a config (.json) file.
+The fundamental structure of Vapc is divided into two parts. The data handler and the vapc computation part. 
 ## The data handler
 is an addition for easy reading and saving of data. It always reads a list of point clouds and saves them as a single dataframe. This enables the merging of multiple datasets. Whenever save is called from the data handler, the dataframe currently stored in it is saved. So here the workflow would be:
 * Initiate the data handler
 * Load data with data handler
-* Give dataframe to vasp
+* Give dataframe to vapc
 * Return dataframe after computations back to data handler
 * Call save from data handler  
 
 
-## VASP...
+## Vapc...
 is used to compute statistics of existing attributes and compute new attribute. This takes place in a voxel space where the voxel size ("voxel_size") and the origin of the voxel space have to be defined ("origin").
 
 ### For the computation of statistics for existing attributes
@@ -92,12 +92,12 @@ This can be set like this:
 ## Full example of a config file
 Lets define a scenario:
 
-We want to use VASP to compute the mean intensity of an input point cloud. The voxel size should be 1 m. Additionally we want to compute the point count and the big int index. The result of each voxel shall be stored in a point cloud where each point is located at the center of gravity of its corresponding voxel. Here the config file would look something like this:
+We want to use Vapc to compute the mean intensity of an input point cloud. The voxel size should be 1 m. Additionally we want to compute the point count and the big int index. The result of each voxel shall be stored in a point cloud where each point is located at the center of gravity of its corresponding voxel. Here the config file would look something like this:
 
 ```json
 {
-"infiles":["v2_vasp/test_data/vasp_in.laz"],
-"outfile":"v2_vasp/test_data/vasp_out.laz",
+"infiles":["v2_vapc/test_data/vapc_in.laz"],
+"outfile":"v2_vapc/test_data/vapc_out.laz",
 "voxel_size":1.0,
 "origin":[0,0,0],
 
@@ -138,7 +138,7 @@ As we can see we have to define the operator (min, min_eq, max, max_eq,eq), the 
 *This method is not yet implemented in an automated workflow but can be called in a script by:
 
 ```python
-vasp.filter_attributes(
+vapc.filter_attributes(
     filter_attribute=attr_filter["filter_attribute"],
     filter_value=attr_filter["filter_value"],
     min_max_eq=attr_filter["min_max_eq"]
@@ -153,7 +153,7 @@ Visualisations might require to generate a mesh of a voxelized point cloud. The 
 ```python
 data_handler.save_as_ply(
     outfile=config["outfile_ply"],
-    voxel_size=vasp.voxel_size,
+    voxel_size=vapc.voxel_size,
     shift_to_center=False
     ) 
 ```
