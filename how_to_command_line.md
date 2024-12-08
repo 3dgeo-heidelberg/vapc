@@ -1,4 +1,4 @@
-# How to Use VAPC as a Command Line Tool
+# Command Line Tool
 ## Configuration
 
 VAPC uses JSON configuration files to define processing parameters. Below are examples of various configuration templates.

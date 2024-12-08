@@ -10,6 +10,8 @@ Vapc documentation
    :caption: Contents:
 
    intro
+   cmd_line
    basic_tools
    build_pipelines
+   vapc
    faq

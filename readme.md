@@ -6,7 +6,7 @@
   vapc
   <br>
 </h1> -->
-<h1 align="center"><strong>V</strong>oxel <strong>A</strong>nalysis for <strong>P</strong>oint <strong>C</strong>louds</h4> -->
+<h1 align="center"><strong>V</strong>oxel <strong>A</strong>nalysis for <strong>P</strong>oint <strong>C</strong>louds</h4>
 
 `vapc` is a `Python` library for voxel-based point cloud operations.
 
@@ -71,7 +71,7 @@ Examplary [Jupyter Notebooks](./jupyter) are available.
 * First filter by point count and than compute statistics
 
 ## Command line `vapc`
-Using vapc from the [command line](./cmd) with configure files is already possible and will soon be explained in the [how-to](./cmd/how_to_command_line.md). 
+Using vapc from the [command line](./cmd) with configure files isexplained in the [how-to](.how_to_command_line.md). 
 
 # Download
 A small test dataset is currently provided in [test_data](./test_data).

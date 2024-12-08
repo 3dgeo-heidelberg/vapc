@@ -108,7 +108,7 @@ src/**/__pycache__/*.pyc
 
 # Exclude test data
 tests/test_data/*.las
-tests/test_data/*.laz
+# tests/test_data/*.laz
 
 # Test output
 tests/test_data_output/

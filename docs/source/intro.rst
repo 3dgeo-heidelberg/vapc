@@ -1,4 +1,1 @@
-Documentation
-==========================================
-
-.. mdinclude:: .readme.md
+.. mdinclude:: ../../readme.md

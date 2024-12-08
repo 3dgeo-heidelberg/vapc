@@ -1,4 +1,4 @@
-Vapc tools usage tutorials
+Notebooks
 ==========================================
 
 In the following, you find a number of tutorials that demonstrate the basic capabilities of :code:`vapc` 
