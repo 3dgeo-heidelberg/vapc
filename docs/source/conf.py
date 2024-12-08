@@ -51,3 +51,6 @@ html_static_path = []
 
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
+
+nbsphinx_allow_errors = True
+nbsphinx_execute = "never"
