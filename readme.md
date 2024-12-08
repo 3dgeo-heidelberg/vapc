@@ -24,9 +24,23 @@ The **main objective** of `vapc` is to bundle and provide different methods of 3
 </p>
 
 # Installation
+
+## Creating Conda Environments
+To avoid negative interactions between installed packages and version conflicts, you should create a conda environment for each new project. You do so by executing:
+```bash
+# First, create new environment
+$ conda create --name vapc python=3.10
+
+# Then activate the environment using:
+$ conda activate vapc
+
+```
+
 Using vapc requires Python 3.10 or higher.
 Clone and run this application:
+
 ```bash
+
 # Clone this repository
 $ git clone https://github.com/3dgeo-heidelberg/vapc.git
 
@@ -37,9 +51,10 @@ $ cd vapc
 $ python -m pip install .
 
 #OR if editable needed
-python -m pip install -v --editable .
+$ python -m pip install -v --editable .
 
 ```
+
 # Documentation of software usage
 ## Jupyter Notebooks
 Examplary [Jupyter Notebooks](./jupyter) are available.
@@ -60,15 +75,6 @@ Using vapc from the [command line](./cmd) with configure files is already possib
 
 # Download
 A small test dataset is currently provided in [test_data](./test_data).
-
-# Credits
-This software uses the following [python](https://www.python.org/) packages:
-
-- [NumPy](https://numpy.org/)
-- [Laspy](https://github.com/laspy/laspy)
-- [pandas](https://pandas.pydata.org/)
-- [SciPy](https://scipy.org/)
-- [plyfile](https://python-plyfile.readthedocs.io/)
 
 # Related
 - [3DGeo Research Group, Heidelberg University](https://github.com/3dgeo-heidelberg) - Focused on the development of methods for the geographic analysis of 3D/4D point clouds.
