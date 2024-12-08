@@ -2,7 +2,7 @@ import laspy
 import numpy as np
 import os
 from functools import partial
-from multiprocessing import Pool
+
 
 def las_create_or_append(fh, las, mask, tile_name):
     """
@@ -37,8 +37,8 @@ def las_create_or_append(fh, las, mask, tile_name):
         print("Created file:\t\t", tile_name)
     return True
 
-def las_merge(filepaths,
-              outfile):
+
+def las_merge(filepaths, outfile):
     """
     Merges multiple LAS files into a single output file.
 
@@ -59,7 +59,7 @@ def las_merge(filepaths,
                 las.write(outfile)
                 print(f"Created {outfile}. Merging now...")
                 break
-    with laspy.open(outfile,"a") as lf:
+    with laspy.open(outfile, "a") as lf:
         scales = lf.header.scales
         offsets = lf.header.offsets
         for file in filepaths[1:]:
@@ -72,7 +72,7 @@ def las_merge(filepaths,
     return True
 
 
-def laSZ_to_laSZ(infile,outfile = False):    
+def laSZ_to_laSZ(infile, outfile=False):
     """
     Converts a LAS file to a LAZ file or a LAZ file to a LAS file.
 
@@ -85,21 +85,18 @@ def laSZ_to_laSZ(infile,outfile = False):
     """
     if outfile is False:
         if infile[-1] == "z":
-            outfile = infile[:-4]+"s"
+            outfile = infile[:-4] + "s"
         elif infile[-1] == "s":
-            outfile = infile[:-4]+"z"
+            outfile = infile[:-4] + "z"
         else:
             return False
     with laspy.open(infile) as lasf:
         las = lasf.read()
         las.write(outfile)
 
-def las_create_3DTiles(lazfile,
-    outDir,
-    tilesize,
-    tilename = "",
-    buffer = 0):
-    """ 
+
+def las_create_3DTiles(lazfile, outDir, tilesize, tilename="", buffer=0):
+    """
     Creates 3D tiles from a LAZ file by partitioning the point cloud into tiles of specified size.
 
     Parameters:
@@ -112,7 +109,7 @@ def las_create_3DTiles(lazfile,
     Returns:
     - numpy.ndarray: Array of unique tile file paths created.
     """
-    with laspy.open(lazfile,"r") as fh:
+    with laspy.open(lazfile, "r") as fh:
         las = fh.read()
         extent = [*fh.header.min, *fh.header.max]
         x_min = np.floor(extent[0])
@@ -121,11 +118,18 @@ def las_create_3DTiles(lazfile,
         y_max = np.ceil(extent[4])
         z_min = np.floor(extent[2])
         z_max = np.ceil(extent[5])
-        if x_min == 0 and x_max == 0 and y_min == 0 and y_max == 0 and z_min == 0 and z_max == 0:
-            x_min,y_min,z_min = las.xyz.min(axis = 0)
-            x_max,y_max,z_max = las.xyz.max(axis = 0)
+        if (
+            x_min == 0
+            and x_max == 0
+            and y_min == 0
+            and y_max == 0
+            and z_min == 0
+            and z_max == 0
+        ):
+            x_min, y_min, z_min = las.xyz.min(axis=0)
+            x_max, y_max, z_max = las.xyz.max(axis=0)
             # assert False, "extent not defined in header of las/laz file"
-    #Find number of Tiles for x and y direction
+    # Find number of Tiles for x and y direction
     diffX = x_max - x_min
     diffY = y_max - y_min
     diffZ = z_max - z_min
@@ -139,17 +143,20 @@ def las_create_3DTiles(lazfile,
     zVerts = np.arange(z_min, z_min + zTiles * tilesize + 1, tilesize)
     tile_names = []
     masks = []
-    print("Generating masks for %s potential tiles ... "%(xTiles*yTiles*zTiles))
+    print("Generating masks for %s potential tiles ... " % (xTiles * yTiles * zTiles))
     for xTile in range(xTiles):
-        tileMinX = round(xVerts[xTile],3)
-        tileMaxX = round(xVerts[xTile + 1],3)
+        tileMinX = round(xVerts[xTile], 3)
+        tileMaxX = round(xVerts[xTile + 1], 3)
         for yTile in range(yTiles):
-            tileMinY = round(yVerts[yTile],3)
-            tileMaxY = round(yVerts[yTile + 1],3)
+            tileMinY = round(yVerts[yTile], 3)
+            tileMaxY = round(yVerts[yTile + 1], 3)
             for zTile in range(zTiles):
-                tileMinZ = round(zVerts[zTile],3)
-                tileMaxZ = round(zVerts[zTile + 1],3)
-                outTile = os.path.join(outDir, f"{tilename}_{tileMinX}_{tileMinY}_{tileMinZ}_{tilesize}_tileSize_{buffer}_buff.las")
+                tileMinZ = round(zVerts[zTile], 3)
+                tileMaxZ = round(zVerts[zTile + 1], 3)
+                outTile = os.path.join(
+                    outDir,
+                    f"{tilename}_{tileMinX}_{tileMinY}_{tileMinZ}_{tilesize}_tileSize_{buffer}_buff.las",
+                )
                 mMinX = las.points.x >= (tileMinX - buffer)
                 mMaxX = las.points.x < (tileMaxX + buffer)
                 mMinY = las.points.y >= (tileMinY - buffer)
@@ -164,15 +171,16 @@ def las_create_3DTiles(lazfile,
     print("Created masks")
     write_tile_for_lasfile = partial(las_create_or_append, fh, las)
 
-    #Clip point clouds
+    # Clip point clouds
     existing_tiles = []
-    for mask, tile_name in zip(masks,tile_names):
-        existing_tiles.append(write_tile_for_lasfile(mask,tile_name))
-    return np.unique(list(filter((False).__ne__, existing_tiles))) #removing false entries
+    for mask, tile_name in zip(masks, tile_names):
+        existing_tiles.append(write_tile_for_lasfile(mask, tile_name))
+    return np.unique(
+        list(filter((False).__ne__, existing_tiles))
+    )  # removing false entries
 
-def clip_to_bbox(laz_in,
-                 laz_out,
-                 bbox):
+
+def clip_to_bbox(laz_in, laz_out, bbox):
     """
     Clips a LAZ file to a specified bounding box and writes the result to a new file.
 
@@ -198,11 +206,13 @@ def clip_to_bbox(laz_in,
     points_masked = las.points[xmi & xma & ymi & yma & zmi & zma]
 
     if points_masked.X.shape[0] == 0:
-        print("File empty after removing buffer: %s"%laz_in)
+        print("File empty after removing buffer: %s" % laz_in)
         os.remove(laz_in)
         return 0
     ct = points_masked.X.shape[0]
-    header = laspy.LasHeader(point_format=fh.header.point_format, version=fh.header.version)
+    header = laspy.LasHeader(
+        point_format=fh.header.point_format, version=fh.header.version
+    )
     header.offsets = fh.header.offsets
     header.scales = fh.header.scales
 
@@ -211,7 +221,8 @@ def clip_to_bbox(laz_in,
     lasTile.write(laz_out)
     return ct
 
-def las_remove_buffer(folder): 
+
+def las_remove_buffer(folder):
     """
     Removes buffer zones from all LAS files in a specified folder by clipping them to their bounding boxes.
 
@@ -225,11 +236,18 @@ def las_remove_buffer(folder):
     for file in os.listdir(folder):
         bbox_str = file.split("_")[1:4]
         tilesize = float(file.split("_")[4])
-        x_min, y_min, z_min, x_max, y_max, z_max = float(bbox_str[0]),float(bbox_str[1]),float(bbox_str[2]),float(bbox_str[0])+tilesize,float(bbox_str[1])+tilesize,float(bbox_str[2])+tilesize
-        bbox = np.round([x_min, y_min, z_min, x_max, y_max, z_max],4)
-        in_file = os.path.join(folder,file)
+        x_min, y_min, z_min, x_max, y_max, z_max = (
+            float(bbox_str[0]),
+            float(bbox_str[1]),
+            float(bbox_str[2]),
+            float(bbox_str[0]) + tilesize,
+            float(bbox_str[1]) + tilesize,
+            float(bbox_str[2]) + tilesize,
+        )
+        bbox = np.round([x_min, y_min, z_min, x_max, y_max, z_max], 4)
+        in_file = os.path.join(folder, file)
         out_file = in_file
-        clip_to_bbox(in_file,out_file,bbox)
+        clip_to_bbox(in_file, out_file, bbox)
         if os.path.isfile(out_file):
             ofs.append(out_file)
     return ofs

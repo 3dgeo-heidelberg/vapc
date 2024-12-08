@@ -4,12 +4,9 @@ make.bat html
 start build/html/index.html
 """
 
-
 import os
 import vapc
-import subprocess
 import sys
-
 
 
 sys.path.insert(0, os.path.abspath("../../src"))
@@ -32,25 +29,24 @@ release = vapc.get_version()
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',  # For NumPy and Google style docstrings
-    'sphinx_autodoc_typehints',  # For type hints
-    'sphinx.ext.viewcode',  # To include source code
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",  # For NumPy and Google style docstrings
+    "sphinx_autodoc_typehints",  # For type hints
+    "sphinx.ext.viewcode",  # To include source code
     "nbsphinx",
     "nbsphinx_link",
     "sphinx_mdinclude",
-    "sphinx_rtd_theme"
+    "sphinx_rtd_theme",
 ]
 
 templates_path = []
 exclude_patterns = []
 
 
-
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_rtd_theme'
+html_theme = "sphinx_rtd_theme"
 html_static_path = []
 
 napoleon_google_docstring = False

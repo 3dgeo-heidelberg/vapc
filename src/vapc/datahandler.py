@@ -1,11 +1,10 @@
-#For Data Handler:
+# For Data Handler:
 from plyfile import PlyData, PlyElement
 import laspy
-import os
 import numpy as np
 import pandas as pd
-from .utilities import trace,timeit
-from scipy import stats
+from .utilities import trace, timeit
+
 
 class DataHandler:
     def __init__(self, infiles):
@@ -48,7 +47,7 @@ class DataHandler:
         None
         """
         all_data = []
-        if type(self.files) != list:
+        if not isinstance(self.files, list):
             self.files = [self.files]
 
         for filepath in self.files:
@@ -57,29 +56,34 @@ class DataHandler:
                 las = lf.read()
                 self.las_header = las.header
                 self.attributes = list(las.points.array.dtype.names)
-                list(map(self.attributes.remove,["X","Y","Z"])) #remove XYZ as xyz should be read directly to not scale and shift the points in an extra step.
-                #using vls data one might have to remove the extrab dim
+                list(
+                    map(self.attributes.remove, ["X", "Y", "Z"])
+                )  # remove XYZ as xyz should be read directly to not scale and shift the points in an extra step.
+                # using vls data one might have to remove the extrab dim
                 df = pd.DataFrame(
-                                data = np.array([las.x,las.y,las.z]+[las[attr] for attr in self.attributes]).T,
-                                columns = ["X", "Y", "Z"] + self.attributes)
+                    data=np.array(
+                        [las.x, las.y, las.z] + [las[attr] for attr in self.attributes]
+                    ).T,
+                    columns=["X", "Y", "Z"] + self.attributes,
+                )
                 all_data.append(df)
 
         # Merge all data frames and append to existing or create new df
-        if hasattr(self, 'df'):
+        if hasattr(self, "df"):
             self.df = pd.concat([self.df] + all_data, ignore_index=True)
         else:
             self.df = pd.concat(all_data, ignore_index=True)
 
-
     @trace
     @timeit
-    def save_as_las(self,
-                    outfile:str,
-                    las_point_format = 7,
-                    las_version = "1.4",
-                    las_scales = None,
-                    las_offset = None
-                    ):
+    def save_as_las(
+        self,
+        outfile: str,
+        las_point_format=7,
+        las_version="1.4",
+        las_scales=None,
+        las_offset=None,
+    ):
         """
         Saves the data stored in the DataFrame to a LAS file at the specified path.
 
@@ -105,14 +109,14 @@ class DataHandler:
         -------
         None
         """
-        if not hasattr(self, 'df'):
+        if not hasattr(self, "df"):
             raise AttributeError("DataFrame not found. Please load data before saving.")
         if las_scales is None:
             las_scales = [0.00025, 0.00025, 0.00025]
         if las_offset is None:
-            las_offset = np.min(self.df[["X","Y","Z"]].values,axis = 0)
-        
-        new_header = laspy.LasHeader(point_format = las_point_format,version = las_version)
+            las_offset = np.min(self.df[["X", "Y", "Z"]].values, axis=0)
+
+        new_header = laspy.LasHeader(point_format=las_point_format, version=las_version)
         new_header.offsets = las_offset
         new_header.scales = las_scales
 
@@ -120,7 +124,7 @@ class DataHandler:
         self.lasFile.x = self.df["X"]
         self.lasFile.y = self.df["Y"]
         self.lasFile.z = self.df["Z"]
-        #for VLS data...
+        # for VLS data...
         try:
             self.lasFile.remove_extra_dims(["ExtraBytes"])
         except:
@@ -130,14 +134,12 @@ class DataHandler:
             if name not in ["X", "Y", "Z"]:
                 try:
                     self.lasFile[name] = self.df[name]
-                except Exception as e:
-                    self._addDimensionToLaz(self.df[name].astype(np.float32),name)
-                    print("Adding new dimension %s"%name)
+                except:
+                    self._addDimensionToLaz(self.df[name].astype(np.float32), name)
+                    print("Adding new dimension %s" % name)
         self.lasFile.write(outfile)
-        
-    def _addDimensionToLaz(self,
-                           array,
-                           name):
+
+    def _addDimensionToLaz(self, array, name):
         """
         Adds a new attribute dimension to the LAZ file.
 
@@ -154,15 +156,12 @@ class DataHandler:
         -------
         None
         """
-        self.lasFile.add_extra_dim(laspy.ExtraBytesParams(
-            name=name,
-            type=array.dtype,
-            description=name
-            ))
+        self.lasFile.add_extra_dim(
+            laspy.ExtraBytesParams(name=name, type=array.dtype, description=name)
+        )
         self.lasFile[name] = array
 
-    def _calculate_voxel_corners(self, 
-                                 df_values):
+    def _calculate_voxel_corners(self, df_values):
         """
         Computes corner points for all voxels.
 
@@ -179,38 +178,38 @@ class DataHandler:
         np.ndarray
             Array of voxel corner positions and their associated scalar attributes.
         """
-        offset = self.voxel_size/2.
-        xyz_offsets = np.array([
-            [-offset, -offset, -offset],
-            [offset, -offset, -offset],
-            [offset, offset, -offset],
-            [-offset, offset, -offset],
-            [-offset, -offset, offset],
-            [offset, -offset, offset],
-            [offset, offset, offset],
-            [-offset, offset, offset]
-        ])
+        offset = self.voxel_size / 2.0
+        xyz_offsets = np.array(
+            [
+                [-offset, -offset, -offset],
+                [offset, -offset, -offset],
+                [offset, offset, -offset],
+                [-offset, offset, -offset],
+                [-offset, -offset, offset],
+                [offset, -offset, offset],
+                [offset, offset, offset],
+                [-offset, offset, offset],
+            ]
+        )
 
         # Fetch scalars array and repeat each line the number of lines in xyz_offsets
-        scalars = df_values[:,3:]
+        scalars = df_values[:, 3:]
         scalars = np.repeat(scalars, xyz_offsets.shape[0], axis=0)
 
         # Add offsets for each points
-        xyz = df_values[:,:3][:, np.newaxis] + xyz_offsets
+        xyz = df_values[:, :3][:, np.newaxis] + xyz_offsets
         xyz = np.vstack(xyz)
 
         # Concatenate the points with their respective scalars
         xyz_scalars = np.c_[xyz, scalars]
 
         return xyz_scalars
-    
-    
+
     @trace
     @timeit
-    def save_as_ply(self, 
-                    outfile: str, 
-                    voxel_size: float, 
-                    shift_to_center: bool = False):
+    def save_as_ply(
+        self, outfile: str, voxel_size: float, shift_to_center: bool = False
+    ):
         """
         Saves the voxel data as cubes in a PLY file.
 
@@ -231,8 +230,16 @@ class DataHandler:
         None
         """
         # Adjust color values if necessary
-        if "red" in self.df.columns and "green" in self.df.columns and "blue" in self.df.columns:
-            if self.df.red.max() > 255 or self.df.green.max() > 255 or self.df.blue.max() > 255:
+        if (
+            "red" in self.df.columns
+            and "green" in self.df.columns
+            and "blue" in self.df.columns
+        ):
+            if (
+                self.df.red.max() > 255
+                or self.df.green.max() > 255
+                or self.df.blue.max() > 255
+            ):
                 self.df.red = (self.df.red / 65535.0 * 255).astype(np.uint8)
                 self.df.green = (self.df.green / 65535.0 * 255).astype(np.uint8)
                 self.df.blue = (self.df.blue / 65535.0 * 255).astype(np.uint8)
@@ -253,22 +260,26 @@ class DataHandler:
         # Build the data type list for the structured array
         vertex_dtype = []
         for i, field_name in enumerate(self.df.columns):
-            field_name_lower = field_name.lower() if field_name in ['X', 'Y', 'Z'] else field_name
-            if field_name in ['red', 'green', 'blue']:
-                vertex_dtype.append((field_name, 'u1'))  # colors as uint8
-            elif field_name in ['X', 'Y', 'Z']:
-                vertex_dtype.append((field_name_lower, 'f4'))  # x, y, z as float32
+            field_name_lower = (
+                field_name.lower() if field_name in ["X", "Y", "Z"] else field_name
+            )
+            if field_name in ["red", "green", "blue"]:
+                vertex_dtype.append((field_name, "u1"))  # colors as uint8
+            elif field_name in ["X", "Y", "Z"]:
+                vertex_dtype.append((field_name_lower, "f4"))  # x, y, z as float32
             else:
                 # For other attributes, assume float32
-                vertex_dtype.append((field_name, 'f4'))
+                vertex_dtype.append((field_name, "f4"))
 
         # Create structured array for vertices
         vertex_array = np.zeros(len(verts), dtype=vertex_dtype)
 
         # Assign data to the structured array
         for i, field_name in enumerate(self.df.columns):
-            field_name_lower = field_name.lower() if field_name in ['X', 'Y', 'Z'] else field_name
-            if field_name in ['red', 'green', 'blue']:
+            field_name_lower = (
+                field_name.lower() if field_name in ["X", "Y", "Z"] else field_name
+            )
+            if field_name in ["red", "green", "blue"]:
                 # Ensure data is uint8
                 data = verts[:, i].astype(np.uint8)
             else:
@@ -276,20 +287,18 @@ class DataHandler:
             vertex_array[field_name_lower] = data
 
         # Prepare face data
-        face_dtype = [('vertex_indices', 'i4', (3,))]
+        face_dtype = [("vertex_indices", "i4", (3,))]
         face_array = np.empty(len(faces), dtype=face_dtype)
-        face_array['vertex_indices'] = faces
+        face_array["vertex_indices"] = faces
 
         # Create PlyElements
-        vertex_element = PlyElement.describe(vertex_array, 'vertex')
-        face_element = PlyElement.describe(face_array, 'face')
+        vertex_element = PlyElement.describe(vertex_array, "vertex")
+        face_element = PlyElement.describe(face_array, "face")
 
         # Write to PLY file
 
-        with open(outfile, 'wb') as ply_file:
+        with open(outfile, "wb") as ply_file:
             PlyData([vertex_element, face_element], text=False).write(ply_file)
-
-        
 
     def _generate_mesh_data(self):
         """
@@ -305,20 +314,28 @@ class DataHandler:
                 - np.ndarray: Array of vertex positions and scalar attributes.
                 - np.ndarray: Array of face indices.
         """
-        df_values = self.df[['X', 'Y', 'Z'] + list(self.df.columns[3:])].values
+        df_values = self.df[["X", "Y", "Z"] + list(self.df.columns[3:])].values
 
         # Calculate voxel corners
         corners = self._calculate_voxel_corners(df_values)
 
         # Define the face indices for a cube
-        face_indices_0 = np.array([
-            [0, 1, 2], [0, 2, 3],  # Front face
-            [4, 5, 6], [4, 6, 7],  # Back face
-            [0, 1, 5], [0, 5, 4],  # Bottom face
-            [2, 3, 7], [2, 7, 6],  # Top face
-            [1, 2, 6], [1, 6, 5],  # Right face
-            [3, 0, 4], [3, 4, 7]   # Left face
-        ])
+        face_indices_0 = np.array(
+            [
+                [0, 1, 2],
+                [0, 2, 3],  # Front face
+                [4, 5, 6],
+                [4, 6, 7],  # Back face
+                [0, 1, 5],
+                [0, 5, 4],  # Bottom face
+                [2, 3, 7],
+                [2, 7, 6],  # Top face
+                [1, 2, 6],
+                [1, 6, 5],  # Right face
+                [3, 0, 4],
+                [3, 4, 7],  # Left face
+            ]
+        )
 
         # Total number of voxels
         num_voxels = int(corners.shape[0] / 8)
