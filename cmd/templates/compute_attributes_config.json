@@ -1,8 +1,8 @@
 {  
-    "infile":"./tests/test_data/vasp_in.laz",
+    "infile":"./tests/test_data/vapc_in.laz",
     "outdir":"./tests/test_data",
     "voxel_size":0.2,
-    "vasp_command":{
+    "vapc_command":{
         "tool":"compute",
         "args":{
             "compute":[
