@@ -1,4 +1,4 @@
 Documentation
 ==========================================
 
-.. mdinclude:: ./readme_rtd.md
+.. mdinclude:: .readme.md
