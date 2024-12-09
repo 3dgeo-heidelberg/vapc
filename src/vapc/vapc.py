@@ -1070,12 +1070,7 @@ class Vapc:
         Filters a DataFrame attribute based on specified criteria.
         This method modifies the DataFrame `self.df` by applying a filter condition based on the specified attribute, value, and filter type.
 
-        Filters include:
-            - equality ('eq')
-            - greater than ('min')
-            - greater than or equal ('min_eq')
-            - less than ('max')
-            - less than or equal ('max_eq')
+        Choice of operators: ['equal_to', 'greater_than', 'less_than', 'greater_than_or_equal_to', 'less_than_or_equal_to', '==', '>', '<', '>=', '<=']
 
         Parameters:
         - filter_attribute (str): The attribute (column name) of the DataFrame to apply the filter on.
@@ -1090,15 +1085,15 @@ class Vapc:
         ```
         """
         min_max_eq = min_max_eq.lower()
-        if min_max_eq == "eq":
+        if min_max_eq == "equal_to" or min_max_eq == "==":
             self.df = self.df[self.df[filter_attribute] == filter_value]
-        elif min_max_eq == "min":
+        elif min_max_eq == "greater_than" or min_max_eq == ">":
             self.df = self.df[self.df[filter_attribute] > filter_value]
-        elif min_max_eq == "min_eq":
+        elif min_max_eq == "greater_than_or_equal_to" or min_max_eq == ">=":
             self.df = self.df[self.df[filter_attribute] >= filter_value]
-        elif min_max_eq == "max":
+        elif min_max_eq == "less_than" or min_max_eq == "<":
             self.df = self.df[self.df[filter_attribute] < filter_value]
-        elif min_max_eq == "max_eq":
+        elif min_max_eq == "less_than_or_equal_to" or min_max_eq == "<=":
             self.df = self.df[self.df[filter_attribute] <= filter_value]
         else:
             print("Filter invalid, use eq, min, min_eq, max, and max_eq only.")

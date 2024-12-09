@@ -172,7 +172,7 @@ def filter_by_attributes(vapc_pc, filters, reduce_to="closest_to_center_of_gravi
 
     This function computes the necessary attributes, applies the filter conditions,
     and optionally reduces the DataFrame to one value per voxel after filtering.
-
+    Choice of operators: ['equal_to', 'greater_than', 'less_than', 'greater_than_or_equal_to', 'less_than_or_equal_to', '==', '>', '<', '>=', '<=']
     Parameters
     ----------
     vapc_pc : Vapc
@@ -181,8 +181,8 @@ def filter_by_attributes(vapc_pc, filters, reduce_to="closest_to_center_of_gravi
         A dictionary where keys are attribute names and values are dictionaries
         of filter conditions and their corresponding values. Example:
         {
-            "point_count": {"greater_equal": 10},
-            "eigenvalue_1": {"less": .2}
+            "point_count": {"greater_than_or_equal_to": 10},
+            "eigenvalue_1": {"less_than": .2}
         }
     reduce_to : str or bool
         Specifies the method to reduce the DataFrame to one value per voxel after filtering.
@@ -198,8 +198,8 @@ def filter_by_attributes(vapc_pc, filters, reduce_to="closest_to_center_of_gravi
     Examples
     --------
     >>> filters = {
-    ...     "point_count": {"greater_equal": 10},
-    ...     "eigenvalue_1": {"less": .2}
+    ...     "point_count": {"greater_than_or_equal_to": 10},
+    ...     "eigenvalue_1": {"less_than": .2}
     ... }
     >>> filtered_df = filter_by_attributes(vapc_pc, filters, reduce_to="center_of_gravity")
     >>> print(filtered_df.head())
@@ -211,34 +211,10 @@ def filter_by_attributes(vapc_pc, filters, reduce_to="closest_to_center_of_gravi
     for fa in filters.keys():
         filter_attribute = filters[fa]
         for filter_condition in filter_attribute.keys():
-            if filter_condition == "equal":
+            if filter_condition in ['equal_to', 'greater_than', 'less_than', 'greater_than_or_equal_to', 'less_than_or_equal_to', '==', '>', '<', '>=', '<=']:
                 vapc_pc.filter_attributes(
                     fa,
-                    "eq",
-                    filter_attribute[filter_condition],
-                )
-            elif filter_condition == "greater_equal":
-                vapc_pc.filter_attributes(
-                    fa,
-                    "min_eq",
-                    filter_attribute[filter_condition],
-                )
-            elif filter_condition == "greater":
-                vapc_pc.filter_attributes(
-                    fa,
-                    "min",
-                    filter_attribute[filter_condition],
-                )
-            elif filter_condition == "less_equal":
-                vapc_pc.filter_attributes(
-                    fa,
-                    "max_eq",
-                    filter_attribute[filter_condition],
-                )
-            elif filter_condition == "less":
-                vapc_pc.filter_attributes(
-                    fa,
-                    "max",
+                    filter_condition,
                     filter_attribute[filter_condition],
                 )
             else:

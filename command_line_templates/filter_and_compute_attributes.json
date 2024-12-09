@@ -8,7 +8,7 @@
         "args":{
             "filters":{
                 "point_count":{
-                    "bigger":5}
+                    "greater_than":5}
                 },
             "compute":[
                 "big_int_index",

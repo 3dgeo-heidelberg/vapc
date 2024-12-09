@@ -7,7 +7,7 @@
         "args":{
             "filters":{
                 "point_count":{
-                    "bigger":2}
+                    "greater_than":2}
                 }
             }
         },
