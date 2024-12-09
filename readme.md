@@ -57,7 +57,7 @@ $ python -m pip install -v --editable .
 ## Jupyter Notebooks
 Examplary [Jupyter Notebooks](./jupyter) are available.
 
-### Some usefull tools provided by `vapc`
+### Some useful tools provided by `vapc`
 * Subsampling of point clouds
 * Voxelisation of point clouds
 * Computation of voxel based attributes
