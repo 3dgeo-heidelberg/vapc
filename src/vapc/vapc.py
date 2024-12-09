@@ -1154,34 +1154,34 @@ class Vapc:
         >>> print(vapc_instance.df[['cluster_id', 'cluster_size']])
         """
 
-        def _update_existing_objects(obj, indices, relevantPoints):
-            obj, counts = np.unique(obj[indices[relevantPoints]], return_counts=True)
+        def _update_existing_objects(oc, indices, relevantPoints):
+            obj, counts = np.unique(oc[indices[relevantPoints]], return_counts=True)
             existingObjects = obj[obj > 0]
             for existingObject in existingObjects:
-                mask = np.where(obj == existingObject)
-                obj[mask] = existingObjects.min()
-            obj[indices[relevantPoints]] = existingObjects.min()
+                mask = np.where(oc == existingObject)
+                oc[mask] = existingObjects.min()
+            oc[indices[relevantPoints]] = existingObjects.min()
 
         nr_of_neighbours = 50
         pts = np.array(self.df[cluster_by])
         tree = KDTree(pts)
-        obj = np.zeros_like(self.df[cluster_by[0]])
+        oc = np.zeros_like(self.df[cluster_by[0]])
         self.objectCounter = 1.0
 
         for i, point in enumerate(pts):
             distances, indices = tree.query(point, nr_of_neighbours)
             relevantPoints = np.where(distances <= cluster_distance)
-            if obj[indices[relevantPoints]].max() < 1:
-                obj[indices[relevantPoints]] = self.objectCounter
+            if oc[indices[relevantPoints]].max() < 1:
+                oc[indices[relevantPoints]] = self.objectCounter
                 self.objectCounter += 1
             else:
-                _update_existing_objects(obj, indices, relevantPoints)
+                _update_existing_objects(oc, indices, relevantPoints)
 
-        oids, cts = np.unique(obj, return_counts=True)
+        oids, cts = np.unique(oc, return_counts=True)
         ct_df = pd.DataFrame(
             data=np.array((oids, cts)).T, columns=["cluster_id", "cluster_size"]
         )
-        self.df["cluster_id"] = obj
+        self.df["cluster_id"] = oc
         self.df = self.df.merge(
             ct_df, on="cluster_id", how="left", validate="many_to_one"
         )
