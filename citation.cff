@@ -13,8 +13,8 @@ authors:
   - family-names: Höfle
     given-names: Bernhard
     orcid: "0000-0001-5849-1461"
-title: "vaps - Voxel Analysis for Point Clouds"
+title: "vapc - Voxel Analysis for Point Clouds"
 version: 0.0.1
 date-released: 2024-12-01
 license: "MIT"
-repository-code: "https://github.com/3dgeo-heidelberg/vaps"
+repository-code: "https://github.com/3dgeo-heidelberg/vapc"
