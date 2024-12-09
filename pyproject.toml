@@ -20,12 +20,13 @@ classifiers = [
     "Intended Audience :: Science/Research",
 ]
 dependencies = [
-    "numpy>=1.14.4",
-    "laspy[laszip]>=2.3.0",
-    "plyfile>=1.1",
-    "pandas>=2.1.1",
-    "scipy>=1.11.3",
-    "toml>=0.10.2"
+    "numpy",
+    "laspy[lazrs]>=2.3.0",
+    "plyfile",
+    "pandas",
+    "scipy",
+    "toml",
+    "ipykernel"
 ]
 
 
