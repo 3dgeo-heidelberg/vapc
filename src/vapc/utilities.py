@@ -1,11 +1,13 @@
 from functools import wraps
 import time
+
 # import os
 # import toml #not needed atm
 import pkg_resources
 
+
 def get_version():
-    return pkg_resources.get_distribution('vapc').version
+    return pkg_resources.get_distribution("vapc").version
 
 
 # def get_version():
@@ -44,53 +46,57 @@ def get_version():
 # __version__ = metadata.version(__package__)
 
 
-DECORATOR_CONFIG = {
-    'trace': True,
-    'timeit': True
-}
+DECORATOR_CONFIG = {"trace": True, "timeit": True}
+
 
 def enable_trace(enable=True):
     """
     Enables or disables the trace decorator.
-    
+
     Parameters
     ----------
     enable : bool, optional
         If True, tracing is enabled. If False, tracing is disabled.
     """
-    DECORATOR_CONFIG['trace'] = enable
+    DECORATOR_CONFIG["trace"] = enable
+
 
 def enable_timeit(enable=True):
     """
     Enables or disables the timeit decorator.
-    
+
     Parameters
     ----------
     enable : bool, optional
         If True, timing is enabled. If False, timing is disabled.
     """
-    DECORATOR_CONFIG['timeit'] = enable
+    DECORATOR_CONFIG["timeit"] = enable
+
 
 def trace(func):
     """
     A decorator that prints the name of the function before it is called.
     Controlled by the DECORATOR_CONFIG['trace'] flag.
     """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
-        if DECORATOR_CONFIG['trace']:
+        if DECORATOR_CONFIG["trace"]:
             print(f"Calling {func.__name__}")
         return func(*args, **kwargs)
+
     return wrapper
+
 
 def timeit(func):
     """
     A decorator that measures and prints the execution time of a function.
     Controlled by the DECORATOR_CONFIG['timeit'] flag.
     """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
-        if DECORATOR_CONFIG['timeit']:
+        if DECORATOR_CONFIG["timeit"]:
             start_time = time.time()
             result = func(*args, **kwargs)
             end_time = time.time()
@@ -99,4 +105,5 @@ def timeit(func):
             return result
         else:
             return func(*args, **kwargs)
+
     return wrapper

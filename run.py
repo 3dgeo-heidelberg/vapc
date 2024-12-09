@@ -1,5 +1,5 @@
 # run.py
-import vasp
+import vapc
 
 if __name__ == "__main__":
-    vasp.main()
+    vapc.main()

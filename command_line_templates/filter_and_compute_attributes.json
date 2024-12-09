@@ -1,10 +1,15 @@
-{  
-    "infile":"./tests/test_data/vasp_in.laz",
+
+{
+    "infile":"./tests/test_data/vapc_in.laz",
     "outdir":"./tests/test_data",
-    "voxel_size":0.2,
-    "vasp_command":{
-        "tool":"compute",
+    "voxel_size":0.05,
+    "vapc_command":{
+        "tool":"filter_and_compute",
         "args":{
+            "filters":{
+                "point_count":{
+                    "bigger":5}
+                },
             "compute":[
                 "big_int_index",
                 "hash_index",
@@ -23,6 +28,6 @@
             }
         },
     "tile":false,
-    "reduce_to":"center_of_voxel",
-    "save_as":".laz"
+    "reduce_to":"closest_to_center_of_gravity",
+    "save_as":".ply"
 }

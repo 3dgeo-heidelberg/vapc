@@ -1,7 +1,7 @@
-VASP tools usage tutorials
+Notebooks
 ==========================================
 
-In the following, you find a number of tutorials that demonstrate the basic capabilities of :code:`vasp` 
+In the following, you find a number of tutorials that demonstrate the basic capabilities of :code:`vapc` 
 including an example to use each tool from a notebook or the command line.
 
 .. toctree::

@@ -1,23 +1,29 @@
-from vapc.vapc_tools import *
-from vapc.las_split_append_merge import *
+from vapc.vapc_tools import use_tool, laSZ_to_ply
+from vapc.las_split_append_merge import (
+    las_merge,
+    las_create_3DTiles,
+    las_remove_buffer,
+    laSZ_to_laSZ,
+)
+from vapc.utilities import trace, timeit, get_version
+import os
 import datetime
 import json
 import argparse
-from vapc.utilities import *
-# from vapc import __version__
-
 
 
 @trace
 @timeit
-def do_vapc_on_files(file, 
-                out_dir,
-                voxel_size, 
-                vapc_command,
-                tile = False, 
-                reduce_to = "closest_to_center_of_gravity",
-                save_as = ".laz",
-                doc = True):
+def do_vapc_on_files(
+    file,
+    out_dir,
+    voxel_size,
+    vapc_command,
+    tile=False,
+    reduce_to="closest_to_center_of_gravity",
+    save_as=".laz",
+    doc=True,
+):
     """
     Executes Vapc operations on LAS/LAZ files based on the provided configuration.
 
@@ -70,11 +76,11 @@ def do_vapc_on_files(file,
     - After processing, temporary files and directories are cleaned up to save space.
     - The configuration used for processing is saved as a JSON file if `doc` is True.
     """
-    #get_timestamp_for_output
+    # get_timestamp_for_output
     now = datetime.datetime.now()
     timestamp = now.strftime("%Y_%m_%d_%H-%M-%S")
 
-    #document settings
+    # document settings
     config = vapc_command
     config["vapc_version"] = get_version()
     config["file"] = file
@@ -83,78 +89,81 @@ def do_vapc_on_files(file,
     config["reduce_to"] = reduce_to
     config["tile"] = tile
     config["save_as"] = save_as
-    #generate filepaths
-    outfile = os.path.join(out_dir,vapc_command["tool"]+"_%s.las"%timestamp)
-    outconfig = os.path.join(out_dir,vapc_command["tool"]+"_%s_cfg.json"%timestamp)
-    #Use temporary tiling for big datasets
+    # generate filepaths
+    outfile = os.path.join(out_dir, vapc_command["tool"] + "_%s.las" % timestamp)
+    outconfig = os.path.join(out_dir, vapc_command["tool"] + "_%s_cfg.json" % timestamp)
+    # Use temporary tiling for big datasets
     if tile:
-        tile_dir = os.path.join(out_dir,"temp_tiles")
+        tile_dir = os.path.join(out_dir, "temp_tiles")
         if not os.path.isdir(tile_dir):
             os.mkdir(tile_dir)
         del_inlas = False
-        if type(file) == list:
-            inlas = os.path.join(out_dir,"merged_las.las")
-            las_merge(file,
-                        inlas)
+        if isinstance(file, list):
+            inlas = os.path.join(out_dir, "merged_las.las")
+            las_merge(file, inlas)
             del_inlas = True
         else:
             inlas = file
-            
-        all_tiles = las_create_3DTiles(lazfile = inlas,
-                            outDir=tile_dir,
-                            tilesize= tile,
-                            tilename="temptile",
-                            buffer= (voxel_size/2))
+
+        all_tiles = las_create_3DTiles(
+            lazfile=inlas,
+            outDir=tile_dir,
+            tilesize=tile,
+            tilename="temptile",
+            buffer=(voxel_size / 2),
+        )
 
         for sub_tile in all_tiles:
-            if sub_tile == False:
+            if not sub_tile:
                 continue
-            use_tool(vapc_command["tool"],
-                     sub_tile,
-                     sub_tile,
-                     voxel_size=voxel_size,
-                     args=vapc_command["args"],
-                     reduce_to = vapc_command["reduce_to"])
+            use_tool(
+                vapc_command["tool"],
+                sub_tile,
+                sub_tile,
+                voxel_size=voxel_size,
+                args=vapc_command["args"],
+                reduce_to=vapc_command["reduce_to"],
+            )
 
-        tiles_without_buffer =  las_remove_buffer(tile_dir)
+        tiles_without_buffer = las_remove_buffer(tile_dir)
 
-        las_merge(filepaths=    tiles_without_buffer,
-                  outfile=      outfile)
-        
+        las_merge(filepaths=tiles_without_buffer, outfile=outfile)
+
         for two in tiles_without_buffer:
             os.remove(two)
         if del_inlas:
             os.remove(inlas)
-        os.rmdir(tile_dir)        
-    #work without tiles
+        os.rmdir(tile_dir)
+    # work without tiles
     else:
-        use_tool(vapc_command["tool"],
-                 file,
-                 outfile,
-                 voxel_size=voxel_size,
-                 args=vapc_command["args"],
-                 reduce_to = vapc_command["reduce_to"])
+        use_tool(
+            vapc_command["tool"],
+            file,
+            outfile,
+            voxel_size=voxel_size,
+            args=vapc_command["args"],
+            reduce_to=vapc_command["reduce_to"],
+        )
 
-    #save configuration for documentation
+    # save configuration for documentation
     if doc:
-        with open(outconfig, 'w') as cfg:
-            json.dump(config, 
-                    cfg,
-                    indent=4)
-
+        with open(outconfig, "w") as cfg:
+            json.dump(config, cfg, indent=4)
 
     if save_as == ".laz":
-        laSZ_to_laSZ(outfile,outfile[:-4]+".laz")
+        laSZ_to_laSZ(outfile, outfile[:-4] + ".laz")
         os.remove(outfile)
         return True
     if save_as == ".las":
         return True
     if save_as == ".ply":
-        ply_out = outfile[:-4]+".ply"
-        laSZ_to_ply(infile=outfile,
-                    outfile=ply_out,
-                    voxel_size=voxel_size,
-                    shift_to_center=False)
+        ply_out = outfile[:-4] + ".ply"
+        laSZ_to_ply(
+            infile=outfile,
+            outfile=ply_out,
+            voxel_size=voxel_size,
+            shift_to_center=False,
+        )
         os.remove(outfile)
         return True
 
@@ -172,6 +181,7 @@ def parse_args():
     parser.add_argument("config_file", help="Configuration of the Vapc command")
     return parser.parse_args()
 
+
 def load_config(config_file):
     """
     Loads the Vapc command configuration from a JSON file.
@@ -186,8 +196,9 @@ def load_config(config_file):
     dict
         A dictionary containing the Vapc command configurations.
     """
-    with open(config_file, 'r') as file:
+    with open(config_file, "r") as file:
         return json.load(file)
+
 
 def main():
     """
@@ -204,24 +215,25 @@ def main():
     Examples
     --------
     To run Vapc with a configuration file:
-    
+
     >>> python run.py config.json
     """
-    # Get input 
+    # Get input
     args = parse_args()
 
     # Load json
     config = load_config(args.config_file)
 
     # Apply command
-    do_vapc_on_files(file=config["infile"],
-                    out_dir=config["outdir"],
-                    voxel_size=config["voxel_size"],
-                    vapc_command=config["vapc_command"],
-                    tile = config["tile"],
-                    reduce_to=config["reduce_to"],
-                    save_as=config["save_as"]
-                    )
+    do_vapc_on_files(
+        file=config["infile"],
+        out_dir=config["outdir"],
+        voxel_size=config["voxel_size"],
+        vapc_command=config["vapc_command"],
+        tile=config["tile"],
+        reduce_to=config["reduce_to"],
+        save_as=config["save_as"],
+    )
 
 
 if __name__ == "__main__":
