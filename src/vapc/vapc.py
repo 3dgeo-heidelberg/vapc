@@ -1008,10 +1008,10 @@ class Vapc:
         Reduces the DataFrame to only one value per voxel. `return_at` defines what the X, Y, and Z coordinate
         of the output will be.
         `return_at` overwrites X, Y, Z with:
-            - The center of each voxel containing points ("center_of_voxel")
-            - The minx, miny, minz corner of each voxel containing points ("corner_of_voxel")
-            - The center of gravity computed within each voxel containing points ("center_of_gravity")
-            - The point closest to the center of gravity computed within each voxel containing points ("closest_to_center_of_gravity")
+        - The center of each voxel containing points ("center_of_voxel")
+        - The minx, miny, minz corner of each voxel containing points ("corner_of_voxel")
+        - The center of gravity computed within each voxel containing points ("center_of_gravity")
+        - The point closest to the center of gravity computed within each voxel containing points ("closest_to_center_of_gravity")
 
         Notes
         -----
@@ -1065,21 +1065,17 @@ class Vapc:
 
     @trace
     @timeit
-    def filter_attributes(
-        self,
-        filter_attribute: str,
-        min_max_eq: str,
-        filter_value,
-    ):
+    def filter_attributes(self, filter_attribute: str, min_max_eq: str, filter_value):
         """
         Filters a DataFrame attribute based on specified criteria.
         This method modifies the DataFrame `self.df` by applying a filter condition based on the specified attribute, value, and filter type.
+
         Filters include:
-            equality ('eq')
-            greater than ('min')
-            greater than or equal ('min_eq')
-            less than ('max')
-            less than or equal ('max_eq')
+            - equality ('eq')
+            - greater than ('min')
+            - greater than or equal ('min_eq')
+            - less than ('max')
+            - less than or equal ('max_eq')
 
         Parameters:
         - filter_attribute (str): The attribute (column name) of the DataFrame to apply the filter on.
