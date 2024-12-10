@@ -151,21 +151,20 @@ def do_vapc_on_files(
             json.dump(config, cfg, indent=4)
 
     if save_as == ".laz":
-        laSZ_to_laSZ(outfile, outfile[:-4] + ".laz")
+        laz_out = outfile.replace(".las", ".laz")
+        laSZ_to_laSZ(outfile,laz_out)
         os.remove(outfile)
-        return True
+        return laz_out
     if save_as == ".las":
-        return True
+        return outfile
     if save_as == ".ply":
-        ply_out = outfile[:-4] + ".ply"
-        laSZ_to_ply(
-            infile=outfile,
-            outfile=ply_out,
-            voxel_size=voxel_size,
-            shift_to_center=False,
-        )
+        ply_out = outfile.replace(".las", ".ply")
+        laSZ_to_ply(infile=outfile,
+                    outfile=ply_out,
+                    voxel_size=voxel_size,
+                    shift_to_center=False)
         os.remove(outfile)
-        return True
+        return ply_out
 
 
 def parse_args():
