@@ -138,7 +138,7 @@ class DataHandler:
                     self.lasFile[name] = self.df[name]
                 except:
                     self._addDimensionToLaz(self.df[name].astype(np.float32), name)
-                    print("Adding new dimension %s" % name)
+                    #print("Adding new dimension %s" % name)
 
         if not os.path.exists(Path(outfile).parent):
             os.makedirs(Path(outfile).parent)

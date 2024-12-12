@@ -22,7 +22,7 @@ def las_create_or_append(fh, las, mask, tile_name):
         with laspy.open(tile_name, "a") as lf:
             app_p = las.points[mask]
             lf.append_points(app_p)
-            print("Appended points to:\t", tile_name)
+            #print("Appended points to:\t", tile_name)
     else:
         header = laspy.LasHeader(
             point_format=fh.header.point_format, version=fh.header.version
@@ -34,7 +34,7 @@ def las_create_or_append(fh, las, mask, tile_name):
             return False
         lasTile.points = las.points[mask]
         lasTile.write(tile_name)
-        print("Created file:\t\t", tile_name)
+        #print("Created file:\t\t", tile_name)
     return True
 
 
@@ -57,7 +57,7 @@ def las_merge(filepaths, outfile):
                 continue
             else:
                 las.write(outfile)
-                print(f"Created {outfile}. Merging now...")
+                #print(f"Created {outfile}. Merging now...")
                 break
     with laspy.open(outfile, "a") as lf:
         scales = lf.header.scales
@@ -143,7 +143,7 @@ def las_create_3DTiles(lazfile, outDir, tilesize, tilename="", buffer=0):
     zVerts = np.arange(z_min, z_min + zTiles * tilesize + 1, tilesize)
     tile_names = []
     masks = []
-    print("Generating masks for %s potential tiles ... " % (xTiles * yTiles * zTiles))
+    #print("Generating masks for %s potential tiles ... " % (xTiles * yTiles * zTiles))
     for xTile in range(xTiles):
         tileMinX = round(xVerts[xTile], 3)
         tileMaxX = round(xVerts[xTile + 1], 3)
@@ -168,7 +168,7 @@ def las_create_3DTiles(lazfile, outDir, tilesize, tilename="", buffer=0):
 
                 tile_names.append(outTile)
                 masks.append(mask_all)
-    print("Created masks")
+    #print("Created masks")
     write_tile_for_lasfile = partial(las_create_or_append, fh, las)
 
     # Clip point clouds

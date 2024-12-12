@@ -735,7 +735,7 @@ class Vapc:
         self.percentage_occupied = round(
             nr_of_occupied_voxels / nr_of_voxels_within_bounding_box * 100, 2
         )
-        print("%s percent of the voxel space is occupied" % self.percentage_occupied)
+        #print("%s percent of the voxel space is occupied" % self.percentage_occupied)
 
     def compute_distance_to_center_of_gravity(self):
         """
