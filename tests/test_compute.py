@@ -29,7 +29,7 @@ def input_df_only_geom():
 
 
 @pytest.fixture
-def vapc_dataset_geom_20m(input_df_only_geom):
+def vapc_dataset_geom_20cm(input_df_only_geom):
     # initiate vapc object
     vapc_obj = vapc.Vapc(
         voxel_size=0.2
@@ -41,25 +41,25 @@ def vapc_dataset_geom_20m(input_df_only_geom):
     return vapc_obj
 
 
-def test_compute_reduction_point(vapc_dataset_geom_20m):
-    vapc_dataset_geom_20m.compute_reduction_point()
-    assert vapc_dataset_geom_20m.reduction_point == RED_POINT
+def test_compute_reduction_point(vapc_dataset_geom_20cm):
+    vapc_dataset_geom_20cm.compute_reduction_point()
+    assert vapc_dataset_geom_20cm.reduction_point == RED_POINT
 
 
-def test_compute_offset(vapc_dataset_geom_20m):
-    assert vapc_dataset_geom_20m.offset_applied == False
-    vapc_dataset_geom_20m.compute_offset()
-    assert vapc_dataset_geom_20m.offset_applied == True
-    assert vapc_dataset_geom_20m.df["X"].min() == 0
-    assert vapc_dataset_geom_20m.df["Y"].min() == 0
-    assert vapc_dataset_geom_20m.df["Z"].min() == 0
+def test_compute_offset(vapc_dataset_geom_20cm):
+    assert vapc_dataset_geom_20cm.offset_applied == False
+    vapc_dataset_geom_20cm.compute_offset()
+    assert vapc_dataset_geom_20cm.offset_applied == True
+    assert vapc_dataset_geom_20cm.df["X"].min() == 0
+    assert vapc_dataset_geom_20cm.df["Y"].min() == 0
+    assert vapc_dataset_geom_20cm.df["Z"].min() == 0
 
 
-def test_compute_offset_reverse(vapc_dataset_geom_20m):
-    vapc_dataset_geom_20m.compute_offset()
-    assert vapc_dataset_geom_20m.offset_applied == True
-    vapc_dataset_geom_20m.compute_offset()
-    assert vapc_dataset_geom_20m.offset_applied == False
-    assert vapc_dataset_geom_20m.df["X"].min() == RED_POINT[0]
-    assert vapc_dataset_geom_20m.df["Y"].min() == RED_POINT[1]
-    assert vapc_dataset_geom_20m.df["Z"].min() == RED_POINT[2]
+def test_compute_offset_reverse(vapc_dataset_geom_20cm):
+    vapc_dataset_geom_20cm.compute_offset()
+    assert vapc_dataset_geom_20cm.offset_applied == True
+    vapc_dataset_geom_20cm.compute_offset()
+    assert vapc_dataset_geom_20cm.offset_applied == False
+    assert vapc_dataset_geom_20cm.df["X"].min() == RED_POINT[0]
+    assert vapc_dataset_geom_20cm.df["Y"].min() == RED_POINT[1]
+    assert vapc_dataset_geom_20cm.df["Z"].min() == RED_POINT[2]
