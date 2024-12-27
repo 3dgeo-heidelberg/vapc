@@ -6,6 +6,7 @@ import laspy
 import numpy as np
 import pandas as pd
 from .utilities import trace, timeit
+import warnings
 
 
 class DataHandler:
@@ -61,7 +62,9 @@ class DataHandler:
                 list(
                     map(self.attributes.remove, ["X", "Y", "Z"])
                 )  # remove XYZ as xyz should be read directly to not scale and shift the points in an extra step.
-                # using vls data one might have to remove the extrab dim
+                # using vls data one has to remove the ExtraBytes dim
+                if "HELIOS++" in self.las_header.generating_software:
+                    self.attributes.remove("ExtraBytes")
                 df = pd.DataFrame(
                     data=np.array(
                         [las.x, las.y, las.z] + [las[attr] for attr in self.attributes]
@@ -220,7 +223,7 @@ class DataHandler:
         Saves the voxel data as cubes in a PLY file.
 
         Converts the voxelized DataFrame into a mesh representation and writes it to a PLY file.
-        Optionally shifts the data to origin for better visualization.
+        Optionally shifts the data to bbox center for better visualization.
 
         Parameters
         ----------
@@ -229,12 +232,15 @@ class DataHandler:
         voxel_size : float
             Edge length of the voxels to be created.
         shift_to_center : bool, optional
-            Shift data to origin. Useful for visualizations to center the object. Defaults to False.
+            Shift data to bbox center. Useful for visualizations to center the object. Defaults to False.
 
         Returns
         -------
         None
         """
+        self.voxel_size = voxel_size
+        self._validate_is_voxelized()
+
         # Adjust color values if necessary
         if (
             "red" in self.df.columns
@@ -250,17 +256,15 @@ class DataHandler:
                 self.df.green = (self.df.green / 65535.0 * 255).astype(np.uint8)
                 self.df.blue = (self.df.blue / 65535.0 * 255).astype(np.uint8)
 
-        self.voxel_size = voxel_size
-
         # Generate mesh data
         verts, faces = self._generate_mesh_data()
 
         if shift_to_center:
-            min_x = self.df.X.mean() + self.voxel_size / 2
-            min_y = self.df.Y.mean() + self.voxel_size / 2
-            min_z = self.df.Z.mean() + self.voxel_size / 2
-            min_coord = np.array([min_x, min_y, min_z])
-            verts[:, :3] -= min_coord
+            center_x = self.df.X.min() + (self.df.X.max() - self.df.X.min()) / 2
+            center_y = self.df.Y.min() + (self.df.Y.max() - self.df.Y.min()) / 2
+            center_z = self.df.Z.min() + (self.df.Z.max() - self.df.Z.min()) / 2
+            bbox_center = np.array([center_x, center_y, center_z])
+            verts[:, :3] -= bbox_center
 
         # Prepare vertex data for PLY file
         # Build the data type list for the structured array
@@ -302,7 +306,6 @@ class DataHandler:
         face_element = PlyElement.describe(face_array, "face")
 
         # Write to PLY file
-
         with open(outfile, "wb") as ply_file:
             PlyData([vertex_element, face_element], text=False).write(ply_file)
 
@@ -354,3 +357,26 @@ class DataHandler:
         faces += offset[:, np.newaxis]
 
         return corners, faces
+
+    def _validate_is_voxelized(self):
+        """
+        Validates if the data is voxelized properly.
+
+        If the coordinates do not correspond to voxel centers, a warning is issued.
+
+        Returns
+        -------
+        None
+        """
+        if not hasattr(self, "df"):
+            raise AttributeError("DataFrame not found. Please load data before saving.")
+        if not hasattr(self, "voxel_size"):
+            raise AttributeError("voxel_size not provided. Cannot validate if voxelized.")
+        # do "X", "Y" and "Z" correspond to voxel centers for the given voxel_size?
+        # We check if coords mod voxel size is the same for all points
+        if not len(np.unique(self.df[["X", "Y", "Z"]].values % self.voxel_size)) == 1:
+            warnings.warn(
+                "Caution: Data is not voxelized properly. Output may contain overlapping voxels. \n \
+                Please voxelize data using 'reduce_at'=='center_of_voxel' before saving as PLY",
+                UserWarning
+            )
