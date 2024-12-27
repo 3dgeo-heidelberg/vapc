@@ -83,11 +83,12 @@ def laSZ_to_laSZ(infile, outfile=False):
     Returns:
     - None
     """
+    infile = str(infile)
     if outfile is False:
         if infile[-1] == "z":
-            outfile = infile[:-4] + "s"
+            outfile = infile[:-4] + ".las"
         elif infile[-1] == "s":
-            outfile = infile[:-4] + "z"
+            outfile = infile[:-4] + ".laz"
         else:
             return False
     with laspy.open(infile) as lasf:
@@ -129,7 +130,7 @@ def las_create_3DTiles(lazfile, outDir, tilesize, tilename="", buffer=0):
             x_min, y_min, z_min = las.xyz.min(axis=0)
             x_max, y_max, z_max = las.xyz.max(axis=0)
             # assert False, "extent not defined in header of las/laz file"
-    # Find number of Tiles for x and y direction
+    # Find number of tiles for x and y direction
     diffX = x_max - x_min
     diffY = y_max - y_min
     diffZ = z_max - z_min
@@ -137,13 +138,13 @@ def las_create_3DTiles(lazfile, outDir, tilesize, tilename="", buffer=0):
     yTiles = int(np.ceil(diffY / tilesize))
     zTiles = int(np.ceil(diffZ / tilesize))
 
-    # Define X,Y Boundaries for the tiles
+    # Define x,y boundaries for the tiles
     xVerts = np.arange(x_min, x_min + xTiles * tilesize + 1, tilesize)
     yVerts = np.arange(y_min, y_min + yTiles * tilesize + 1, tilesize)
     zVerts = np.arange(z_min, z_min + zTiles * tilesize + 1, tilesize)
     tile_names = []
     masks = []
-    print("Generating masks for %s potential tiles ... " % (xTiles * yTiles * zTiles))
+    print(f"Generating masks for {xTiles * yTiles * zTiles} potential tiles ... ")
     for xTile in range(xTiles):
         tileMinX = round(xVerts[xTile], 3)
         tileMaxX = round(xVerts[xTile + 1], 3)
