@@ -1,6 +1,7 @@
 import laspy
 import numpy as np
 import os
+from pathlib import Path
 from functools import partial
 
 
@@ -21,6 +22,7 @@ def las_create_or_append(fh, las, mask, tile_name):
         # If the outfile exists, append points to it
         with laspy.open(tile_name, "a") as lf:
             app_p = las.points[mask]
+            print(app_p)
             lf.append_points(app_p)
             print("Appended points to:\t", tile_name)
     else:
@@ -110,6 +112,7 @@ def las_create_3dtiles(lazfile, out_dir, tilesize, tilename="", buffer=0):
     Returns:
     - numpy.ndarray: Array of unique tile file paths created.
     """
+    Path(out_dir).mkdir(exist_ok=True, parents=True)
     with laspy.open(lazfile, "r") as fh:
         las = fh.read()
         extent = [*fh.header.min, *fh.header.max]
@@ -176,9 +179,7 @@ def las_create_3dtiles(lazfile, out_dir, tilesize, tilename="", buffer=0):
     existing_tiles = []
     for mask, tile_name in zip(masks, tile_names):
         existing_tiles.append(write_tile_for_lasfile(mask, tile_name))
-    return np.unique(
-        list(filter((False).__ne__, existing_tiles))
-    )  # removing false entries
+    return np.array(tile_names)[existing_tiles]
 
 
 def clip_to_bbox(laz_in, laz_out, bbox):

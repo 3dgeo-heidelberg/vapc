@@ -5,7 +5,6 @@ import laspy
 import numpy as np
 import vapc
 from vapc import las_split_append_merge
-# from vapc.las_split_append_merge import clip_to_bbox
 
 
 @pytest.fixture
@@ -65,14 +64,14 @@ def test_merge_las(tmp_path, file_ext, test_file_path_1, test_file_path_2):
 def test_compress_las(test_file_path_1):
     outfile = Path(str(test_file_path_1).replace(".laz", ".las"))
     # test decompress
-    las_split_append_merge.laSZ_to_laSZ(test_file_path_1)
+    las_split_append_merge.lasz_to_lasz(test_file_path_1)
     assert outfile.exists()
     las_in = laspy.read(test_file_path_1)
     las_out = laspy.read(outfile)
     assert las_in.points == las_out.points
     # test compress
     outfile2 = Path(str(outfile).replace(".las", "_2.laz"))
-    las_split_append_merge.laSZ_to_laSZ(outfile, outfile2)
+    las_split_append_merge.lasz_to_lasz(outfile, outfile2)
     assert outfile2.exists()
     las_out2 = laspy.read(outfile2)
     assert las_in.points == las_out2.points
@@ -81,7 +80,22 @@ def test_compress_las(test_file_path_1):
     outfile2.unlink()
 
 
-def test_tile_las():
+@pytest.mark.parametrize("tilesize, expected_num_tiles",
+                         [[50.0, 27]])
+def test_tile_las(tmp_path, test_file_path_3, tilesize, expected_num_tiles):
+    outfolder = tmp_path / "tiles"
+    outfiles = las_split_append_merge.las_create_3dtiles(test_file_path_3, outfolder, tilesize)
+    # get filesx
+    found_files = list(Path(outfolder).glob("*.las"))
+    assert len(found_files) == len(outfiles)
+    assert len(outfiles) == expected_num_tiles
+
+
+def test_tile_las_invalid_tile_size():
+    pass
+
+
+def test_tile_las_invalid_buffer_size():
     pass
 
 
