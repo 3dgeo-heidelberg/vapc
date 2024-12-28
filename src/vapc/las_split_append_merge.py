@@ -112,6 +112,10 @@ def las_create_3dtiles(lazfile, out_dir, tilesize, tilename="", buffer=0):
     Returns:
     - numpy.ndarray: Array of unique tile file paths created.
     """
+    assert isinstance(tilesize, (int, float)), 'tilesize must be a number'
+    assert isinstance(buffer, (int, float)), 'buffer must be a number'
+    assert tilesize > 0, "Tile size must be greater than 0"
+    assert buffer >= 0, "Buffer size must be greater than or equal to 0"
     Path(out_dir).mkdir(exist_ok=True, parents=True)
     with laspy.open(lazfile, "r") as fh:
         las = fh.read()

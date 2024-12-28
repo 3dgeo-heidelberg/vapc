@@ -39,14 +39,6 @@ def tiling_test_input(tmp_path):
     return tmp_path, [str(file1), bbox1], [str(file2), bbox2], [str(file3), bbox3]
 
 
-def test_create_las():
-    pass
-
-
-def test_append_to_las():
-    pass
-
-
 @pytest.mark.parametrize("file_ext", ["las", "laz"])
 def test_merge_las(tmp_path, file_ext, test_file_path_1, test_file_path_2):
     filepaths = [test_file_path_1, test_file_path_2]
@@ -91,12 +83,16 @@ def test_tile_las(tmp_path, test_file_path_3, tilesize, expected_num_tiles):
     assert len(outfiles) == expected_num_tiles
 
 
-def test_tile_las_invalid_tile_size():
-    pass
-
-
-def test_tile_las_invalid_buffer_size():
-    pass
+@pytest.mark.parametrize("tilesize, buffersize",
+                         [[-50.0, 0],
+                          [0.0, 0],
+                          ["50", 0],
+                          [50, -10],
+                          [50, "ten"]])
+def test_tile_las_invalid_tile_buffer_size(tmp_path, test_file_path_3, tilesize, buffersize):
+    outfolder = tmp_path / "tiles"
+    with pytest.raises(AssertionError):
+        las_split_append_merge.las_create_3dtiles(test_file_path_3, outfolder, tilesize, buffer=buffersize)
 
 
 def test_clip_las(test_file_path_3, tmp_path):
