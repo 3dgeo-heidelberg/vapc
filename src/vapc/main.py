@@ -1,9 +1,9 @@
 from vapc.vapc_tools import use_tool, laSZ_to_ply
 from vapc.las_split_append_merge import (
     las_merge,
-    las_create_3DTiles,
+    las_create_3dtiles,
     las_remove_buffer,
-    laSZ_to_laSZ,
+    lasz_to_lasz,
 )
 from vapc.utilities import trace, timeit, get_version
 import os
@@ -105,9 +105,9 @@ def do_vapc_on_files(
         else:
             inlas = file
 
-        all_tiles = las_create_3DTiles(
+        all_tiles = las_create_3dtiles(
             lazfile=inlas,
-            outDir=tile_dir,
+            out_dir=tile_dir,
             tilesize=tile,
             tilename="temptile",
             buffer=(voxel_size / 2),
@@ -152,7 +152,7 @@ def do_vapc_on_files(
 
     if save_as == ".laz":
         laz_out = outfile.replace(".las", ".laz")
-        laSZ_to_laSZ(outfile,laz_out)
+        lasz_to_lasz(outfile,laz_out)
         os.remove(outfile)
         return laz_out
     if save_as == ".las":

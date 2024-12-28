@@ -29,11 +29,11 @@ def las_create_or_append(fh, las, mask, tile_name):
         )
         header.offsets = fh.header.offsets
         header.scales = fh.header.scales
-        lasTile = laspy.LasData(header)
+        las_tile = laspy.LasData(header)
         if las.points.x[mask].shape[0] == 0:
             return False
-        lasTile.points = las.points[mask]
-        lasTile.write(tile_name)
+        las_tile.points = las.points[mask]
+        las_tile.write(tile_name)
         print("Created file:\t\t", tile_name)
     return True
 
@@ -72,7 +72,7 @@ def las_merge(filepaths, outfile):
     return True
 
 
-def laSZ_to_laSZ(infile, outfile=False):
+def lasz_to_lasz(infile, outfile=False):
     """
     Converts a LAS file to a LAZ file or a LAZ file to a LAS file.
 
@@ -96,13 +96,13 @@ def laSZ_to_laSZ(infile, outfile=False):
         las.write(outfile)
 
 
-def las_create_3DTiles(lazfile, outDir, tilesize, tilename="", buffer=0):
+def las_create_3dtiles(lazfile, out_dir, tilesize, tilename="", buffer=0):
     """
     Creates 3D tiles from a LAZ file by partitioning the point cloud into tiles of specified size.
 
     Parameters:
     - lazfile (str): Path to the input LAZ file.
-    - outDir (str): Directory where the output tile files will be stored.
+    - out_dir (str): Directory where the output tile files will be stored.
     - tilesize (float): The size of each tile in the X, Y, and Z directions.
     - tilename (str, optional): An optional prefix for the tile file names. Defaults to "".
     - buffer (float, optional): Buffer size to expand each tile boundary. Defaults to 0.
@@ -131,43 +131,43 @@ def las_create_3DTiles(lazfile, outDir, tilesize, tilename="", buffer=0):
             x_max, y_max, z_max = las.xyz.max(axis=0)
             # assert False, "extent not defined in header of las/laz file"
     # Find number of tiles for x and y direction
-    diffX = x_max - x_min
-    diffY = y_max - y_min
-    diffZ = z_max - z_min
-    xTiles = int(np.ceil(diffX / tilesize))
-    yTiles = int(np.ceil(diffY / tilesize))
-    zTiles = int(np.ceil(diffZ / tilesize))
+    diff_x = x_max - x_min
+    diff_y = y_max - y_min
+    diff_z = z_max - z_min
+    x_tiles = int(np.ceil(diff_x / tilesize))
+    y_tiles = int(np.ceil(diff_y / tilesize))
+    z_tiles = int(np.ceil(diff_z / tilesize))
 
     # Define x,y boundaries for the tiles
-    xVerts = np.arange(x_min, x_min + xTiles * tilesize + 1, tilesize)
-    yVerts = np.arange(y_min, y_min + yTiles * tilesize + 1, tilesize)
-    zVerts = np.arange(z_min, z_min + zTiles * tilesize + 1, tilesize)
+    x_verts = np.arange(x_min, x_min + x_tiles * tilesize + 1, tilesize)
+    y_verts = np.arange(y_min, y_min + y_tiles * tilesize + 1, tilesize)
+    z_verts = np.arange(z_min, z_min + z_tiles * tilesize + 1, tilesize)
     tile_names = []
     masks = []
-    print(f"Generating masks for {xTiles * yTiles * zTiles} potential tiles ... ")
-    for xTile in range(xTiles):
-        tileMinX = round(xVerts[xTile], 3)
-        tileMaxX = round(xVerts[xTile + 1], 3)
-        for yTile in range(yTiles):
-            tileMinY = round(yVerts[yTile], 3)
-            tileMaxY = round(yVerts[yTile + 1], 3)
-            for zTile in range(zTiles):
-                tileMinZ = round(zVerts[zTile], 3)
-                tileMaxZ = round(zVerts[zTile + 1], 3)
-                outTile = os.path.join(
-                    outDir,
-                    f"{tilename}_{tileMinX}_{tileMinY}_{tileMinZ}_{tilesize}_tileSize_{buffer}_buff.las",
+    print(f"Generating masks for {x_tiles * y_tiles * z_tiles} potential tiles ... ")
+    for x_tile in range(x_tiles):
+        tile_min_x = round(x_verts[x_tile], 3)
+        tile_max_x = round(x_verts[x_tile + 1], 3)
+        for y_tile in range(y_tiles):
+            tile_min_y = round(y_verts[y_tile], 3)
+            tile_max_y = round(y_verts[y_tile + 1], 3)
+            for z_tile in range(z_tiles):
+                tile_min_z = round(z_verts[z_tile], 3)
+                tile_max_z = round(z_verts[z_tile + 1], 3)
+                out_tile = os.path.join(
+                    out_dir,
+                    f"{tilename}_{tile_min_x}_{tile_min_y}_{tile_min_z}_{tilesize}_tileSize_{buffer}_buff.las",
                 )
-                mMinX = las.points.x >= (tileMinX - buffer)
-                mMaxX = las.points.x < (tileMaxX + buffer)
-                mMinY = las.points.y >= (tileMinY - buffer)
-                mMaxY = las.points.y < (tileMaxY + buffer)
-                mMinZ = las.points.z >= (tileMinZ - buffer)
-                mMaxZ = las.points.z < (tileMaxZ + buffer)
-                mask_all = mMinX & mMaxX & mMinY & mMaxY & mMinZ & mMaxZ
+                m_min_x = las.points.x >= (tile_min_x - buffer)
+                m_max_x = las.points.x < (tile_max_x + buffer)
+                m_min_y = las.points.y >= (tile_min_y - buffer)
+                m_max_y = las.points.y < (tile_max_y + buffer)
+                m_min_z = las.points.z >= (tile_min_z - buffer)
+                m_max_z = las.points.z < (tile_max_z + buffer)
+                mask_all = m_min_x & m_max_x & m_min_y & m_max_y & m_min_z & m_max_z
                 # outfile_mask_dir[outTile] = mask_all
 
-                tile_names.append(outTile)
+                tile_names.append(out_tile)
                 masks.append(mask_all)
     print("Created masks")
     write_tile_for_lasfile = partial(las_create_or_append, fh, las)
@@ -217,9 +217,9 @@ def clip_to_bbox(laz_in, laz_out, bbox):
     header.offsets = fh.header.offsets
     header.scales = fh.header.scales
 
-    lasTile = laspy.LasData(header)
-    lasTile.points = points_masked
-    lasTile.write(laz_out)
+    lastile = laspy.LasData(header)
+    lastile.points = points_masked
+    lastile.write(laz_out)
     return ct
 
 
