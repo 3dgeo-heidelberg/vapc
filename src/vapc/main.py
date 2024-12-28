@@ -1,4 +1,8 @@
-from vapc.vapc_tools import use_tool, laSZ_to_ply
+import os
+import datetime
+import json
+import argparse
+from vapc.vapc_tools import use_tool, lasz_to_ply
 from vapc.las_split_append_merge import (
     las_merge,
     las_create_3dtiles,
@@ -6,10 +10,6 @@ from vapc.las_split_append_merge import (
     lasz_to_lasz,
 )
 from vapc.utilities import trace, timeit, get_version
-import os
-import datetime
-import json
-import argparse
 
 
 @trace
@@ -159,7 +159,7 @@ def do_vapc_on_files(
         return outfile
     if save_as == ".ply":
         ply_out = outfile.replace(".las", ".ply")
-        laSZ_to_ply(infile=outfile,
+        lasz_to_ply(infile=outfile,
                     outfile=ply_out,
                     voxel_size=voxel_size,
                     shift_to_center=False)

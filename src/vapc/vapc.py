@@ -1,6 +1,5 @@
-# For Vapc:
-import numpy as np
 import math
+import numpy as np
 from scipy.spatial import KDTree
 import pandas as pd
 from .utilities import trace, timeit
@@ -408,10 +407,10 @@ class Vapc:
                         try:
                             _, percentage_str = stat.split(",")
                             percentage = float(percentage_str)
-                        except ValueError:
+                        except ValueError as exc:
                             raise ValueError(
                                 f"Invalid 'mode_count' specification for attribute '{attr}': '{stat}'"
-                            )
+                            ) from exc
                         counts = np.bincount(group_slice.astype(int))
                         counts_sum = counts.sum()
                         proportions = counts / counts_sum
