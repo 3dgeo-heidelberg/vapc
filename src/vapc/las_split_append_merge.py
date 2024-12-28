@@ -207,7 +207,7 @@ def clip_to_bbox(laz_in, laz_out, bbox):
     points_masked = las.points[xmi & xma & ymi & yma & zmi & zma]
 
     if points_masked.X.shape[0] == 0:
-        print("File empty after removing buffer: %s" % laz_in)
+        print(f"File empty after removing buffer: {laz_in}")
         os.remove(laz_in)
         return 0
     ct = points_masked.X.shape[0]
@@ -226,6 +226,7 @@ def clip_to_bbox(laz_in, laz_out, bbox):
 def las_remove_buffer(folder):
     """
     Removes buffer zones from all LAS files in a specified folder by clipping them to their bounding boxes.
+    The bounding box is is encoded in the file name (min coords + tile size).
 
     Parameters:
     - folder (str): Path to the folder containing LAS files to process.
@@ -234,9 +235,11 @@ def las_remove_buffer(folder):
     - list of str: List of output LAS files after buffer removal.
     """
     ofs = []
-    for file in os.listdir(folder):
+    for file in os.listdir(str(folder)):
+        if not file.endswith(".las") and not file.endswith(".laz"):
+            continue
         bbox_str = file.split("_")[1:4]
-        tilesize = float(file.split("_")[4])
+        tilesize = float(file.split(".")[0].split("_")[4])
         x_min, y_min, z_min, x_max, y_max, z_max = (
             float(bbox_str[0]),
             float(bbox_str[1]),
