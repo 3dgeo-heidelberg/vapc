@@ -83,15 +83,15 @@ def do_vapc_on_files(
     # document settings
     config = vapc_command
     config["vapc_version"] = get_version()
-    config["file"] = file
-    config["out_dir"] = out_dir
+    config["file"] = str(file)
+    config["out_dir"] = str(out_dir)
     config["voxel_size"] = voxel_size
     config["reduce_to"] = reduce_to
     config["tile"] = tile
     config["save_as"] = save_as
     # generate filepaths
-    outfile = os.path.join(out_dir, vapc_command["tool"] + "_%s.las" % timestamp)
-    outconfig = os.path.join(out_dir, vapc_command["tool"] + "_%s_cfg.json" % timestamp)
+    outfile = os.path.join(out_dir, vapc_command["tool"] + f"_{timestamp}.las")
+    outconfig = os.path.join(out_dir, vapc_command["tool"] + f"_{timestamp}_cfg.json")
     # Use temporary tiling for big datasets
     if tile:
         tile_dir = os.path.join(out_dir, "temp_tiles")
@@ -152,7 +152,7 @@ def do_vapc_on_files(
 
     if save_as == ".laz":
         laz_out = outfile.replace(".las", ".laz")
-        lasz_to_lasz(outfile,laz_out)
+        lasz_to_lasz(outfile, laz_out)
         os.remove(outfile)
         return laz_out
     if save_as == ".las":

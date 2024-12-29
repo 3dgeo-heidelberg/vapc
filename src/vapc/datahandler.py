@@ -1,12 +1,12 @@
 import os
 from pathlib import Path
+import warnings
 from plyfile import PlyData, PlyElement
 import laspy
 from laspy.errors import LaspyException
 import numpy as np
 import pandas as pd
 from .utilities import trace, timeit
-import warnings
 
 
 class DataHandler:

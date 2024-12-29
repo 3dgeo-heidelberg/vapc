@@ -407,7 +407,7 @@ def use_tool(tool_name, infile, outfile, voxel_size, args, reduce_to):
             vapc_pc=vapc_pc, statistics=args["statistics"], reduce_to=reduce_to
         )
     else:
-        return "unknown command:%s" % tool_name
+        raise ValueError(f"unknown tool '{tool_name}'")
     dh.save_as_las(outfile)
 
 

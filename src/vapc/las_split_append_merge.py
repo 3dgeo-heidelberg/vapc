@@ -244,7 +244,7 @@ def las_remove_buffer(folder):
         if not file.endswith(".las") and not file.endswith(".laz"):
             continue
         bbox_str = file.split("_")[1:4]
-        tilesize = float(file.split(".")[0].split("_")[4])
+        tilesize = float(file.split("_")[4].split(".")[0])
         x_min, y_min, z_min, x_max, y_max, z_max = (
             float(bbox_str[0]),
             float(bbox_str[1]),
