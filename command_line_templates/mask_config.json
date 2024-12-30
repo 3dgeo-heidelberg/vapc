@@ -1,17 +1,16 @@
-
 {
-    "infile":"./tests/test_data/vapc_in.laz",
-    "outdir":"./tests/test_data",
-    "voxel_size":0.2,
-    "vapc_command":{
-            "tool":"mask",
-            "args":{
-                    "maskfile":"./tests/test_data/small_mask.laz",
-                    "segment_in_or_out":"in",
-                    "buffer_size":0
-                }
-        },
-    "tile":5,
-    "reduce_to":false,
-    "save_as":".laz"
-}
+    "infile": "./tests/test_data/vapc_in.laz",
+    "outdir": "./tests/test_data",
+    "voxel_size": 0.2,
+    "vapc_command": {
+      "tool": "mask",
+      "args": {
+        "maskfile": "./tests/test_data/small_mask.laz",
+        "segment_in_or_out": "in",
+        "buffer_size": 0
+      }
+    },
+    "tile": 0,
+    "reduce_to": false,
+    "save_as": ".laz"
+  }

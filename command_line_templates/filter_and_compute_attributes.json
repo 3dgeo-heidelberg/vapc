@@ -1,33 +1,34 @@
-
 {
-    "infile":"./tests/test_data/vapc_in.laz",
-    "outdir":"./tests/test_data",
-    "voxel_size":0.05,
-    "vapc_command":{
-        "tool":"filter_and_compute",
-        "args":{
-            "filters":{
-                "point_count":{
-                    "greater_than":5}
-                },
-            "compute":[
-                "big_int_index",
-                "hash_index",
-                "point_density",
-                "point_count",
-                "percentage_occupied",
-                "covariance_matrix",
-                "eigenvalues",
-                "geometric_features",
-                "center_of_gravity",
-                "distance_to_center_of_gravity",
-                "std_of_cog",
-                "closest_to_center_of_gravity",
-                "center_of_voxel",
-                "corner_of_voxel"]
-            }
+    "infile": "./tests/test_data/vapc_in.laz",
+    "outdir": "./tests/test_data",
+    "voxel_size": 0.05,
+    "vapc_command": {
+      "tool": "filter_and_compute",
+      "args": {
+        "filters": {
+          "point_count": {
+            "greater_than": 5
+          }
         },
-    "tile":false,
-    "reduce_to":"closest_to_center_of_gravity",
-    "save_as":".ply"
-}
+        "compute": [
+          "big_int_index",
+          "hash_index",
+          "point_density",
+          "point_count",
+          "percentage_occupied",
+          "covariance_matrix",
+          "eigenvalues",
+          "geometric_features",
+          "center_of_gravity",
+          "distance_to_center_of_gravity",
+          "std_of_cog",
+          "closest_to_center_of_gravity",
+          "center_of_voxel",
+          "corner_of_voxel"
+        ]
+      }
+    },
+    "tile": false,
+    "reduce_to": "closest_to_center_of_gravity",
+    "save_as": ".ply"
+  }

@@ -1,17 +1,42 @@
 {
-    "infile":"./tests/test_data/vapc_in.laz",
-    "outdir":"./tests/test_data",
-    "voxel_size":1,
-    "vapc_command":{
-        "tool":"statistics",
-        "args":{
-            "statistics":{
-                "red":["mean","min","max","mode","median","sum","mode_count,0.1"],
-                "green":["mean","min","max","mode","median","sum","mode_count,0.1"],
-                "blue":["mean","min","max","mode","median","sum","mode_count,0.1"]}
-            }
-        },
-    "tile":false,
-    "reduce_to":"center_of_voxel",
-    "save_as":".ply"
-}
+    "infile": "./tests/test_data/vapc_in.laz",
+    "outdir": "./tests/test_data",
+    "voxel_size": 1,
+    "vapc_command": {
+      "tool": "statistics",
+      "args": {
+        "statistics": {
+          "red": [
+            "mean",
+            "min",
+            "max",
+            "mode",
+            "median",
+            "sum",
+            "mode_count,0.1"
+          ],
+          "green": [
+            "mean",
+            "min",
+            "max",
+            "mode",
+            "median",
+            "sum",
+            "mode_count,0.1"
+          ],
+          "blue": [
+            "mean",
+            "min",
+            "max",
+            "mode",
+            "median",
+            "sum",
+            "mode_count,0.1"
+          ]
+        }
+      }
+    },
+    "tile": false,
+    "reduce_to": "center_of_voxel",
+    "save_as": ".ply"
+  }
