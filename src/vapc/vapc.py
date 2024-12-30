@@ -148,7 +148,7 @@ class Vapc:
                 "The provided data_handler does not have a 'df' attribute."
             )
         self.df = data_handler.df
-        del data_handler.df  # Remove df from data_handler
+        data_handler.df = None  # Remove df from data_handler
         self.original_attributes = self.df.columns.tolist()
 
     @trace
@@ -645,7 +645,7 @@ class Vapc:
     @trace
     @timeit
     def compute_hash_index(
-        self, p1=76690892503, p2=15752609759, p3=27174879103, n=2**100
+        self, p1=76690892503, p2=15752609759, p3=27174879103, n=2**10
     ):
         """
         Computes the hash index for all occupied voxels.
@@ -655,7 +655,7 @@ class Vapc:
         p1, p2, p3 : int, optional
             Large prime numbers used in the hashing function.
         n : int, optional
-            Modulus for the hashing function. Defaults to 2**100.
+            Modulus for the hashing function. Defaults to 2**10.
 
         Notes
         -----
