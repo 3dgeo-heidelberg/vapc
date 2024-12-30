@@ -93,6 +93,3 @@ def test_do_vapc_on_files_defaults(list_of_test_files, tmp_path, voxel_size, vap
                          ])
 def test_do_vapc_on_one_file(test_file, tmp_path, voxel_size, vapc_command, tile, reduce_to, save_as):
     pass
-
-
-# TODO: Test all jsons in "command_line_templates" folder
