@@ -1160,6 +1160,9 @@ class Vapc:
         """
         if cluster_by is None:
             cluster_by = ["voxel_x", "voxel_y", "voxel_z"]
+        if not self.voxelized:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
         def _update_existing_objects(oc, indices, relevantPoints):
             obj, counts = np.unique(oc[indices[relevantPoints]], return_counts=True)
             existingObjects = obj[obj > 0]
