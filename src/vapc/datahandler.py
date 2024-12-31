@@ -29,6 +29,14 @@ class DataHandler:
         List of input LAS/LAZ file paths.
     df : pandas.DataFrame
         DataFrame containing the loaded and processed point cloud data.
+    las_file : laspy.LasData
+        LasData object containing the LAS file data.
+    las_header : laspy.LasHeader
+        LasHeader object containing the LAS file header information.
+    attributes : list of str
+        List of attributes present in the LAS file.
+    voxel_size : float
+        Edge length of the voxels to be created if saving mesh to ply.
     """
     def __init__(self, infiles):
         if isinstance(infiles, list):
@@ -40,7 +48,6 @@ class DataHandler:
         self.las_header = None
         self.attributes = None
         self.voxel_size = None
-
 
     @trace
     @timeit
@@ -80,7 +87,7 @@ class DataHandler:
                 all_data.append(df)
 
         # Merge all data frames and append to existing or create new df
-        if hasattr(self, "df"):
+        if self.df is not None:
             self.df = pd.concat([self.df] + all_data, ignore_index=True)
         else:
             self.df = pd.concat(all_data, ignore_index=True)
