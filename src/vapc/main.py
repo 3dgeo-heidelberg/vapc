@@ -35,6 +35,7 @@ def do_vapc_on_files(
     ----------
     file : str or list of str
         Path to a single LAS/LAZ file or a list of paths to LAS/LAZ files to be processed.
+        If a list is provided, the LAS/LAZ files will be merged and then voxelized.
     out_dir : str
         Directory where output files and configurations will be saved.
     voxel_size : float

@@ -1,12 +1,18 @@
 from pathlib import Path
 import pytest
 import laspy
+import plyfile
 import vapc
 
 
 @pytest.fixture
 def test_file():
     return Path(__file__).parent.parent / "test_data" / "vapc_in.laz"
+
+
+@pytest.fixture
+def test_file_2():
+    return Path(__file__).parent.parent / "test_data" / "als_multichannel_leg000_points.laz"
 
 
 @pytest.fixture
@@ -23,12 +29,61 @@ def vapc_command_compute():
             "compute": [
                 "point_density",
                 "point_count",
-                "percentage_occupied",
-                "geometric_features",
-                "center_of_gravity",
-                "center_of_voxel"]
+                "percentage_occupied"]
                 }
     }
+
+
+def get_expected_las_fields(vapc_command):
+    attributes = vapc_command["args"]["compute"]
+    if "center_of_gravity" in attributes:
+        attributes.remove("center_of_gravity")
+        attributes += ["cog_x", "cog_y", "cog_z"]
+    if "distance_to_center_of_gravity" in attributes:
+        attributes.remove("distance_to_center_of_gravity")
+        attributes += ["distance"]
+    if "covariance_matrix" in attributes:
+        attributes.remove("covariance_matrix")
+        attributes += [
+            "cov_xx",
+            "cov_xy",
+            "cov_xz",
+            "cov_yx",
+            "cov_yy",
+            "cov_yz",
+            "cov_zx",
+            "cov_zy",
+            "cov_zz"
+            ]
+    if "eigenvalues" in attributes:
+        attributes.remove("eigenvalues")
+        attributes += ["Eigenvalue_1", "Eigenvalue_2", "Eigenvalue_3"]
+    if "geometric_features" in attributes:
+        attributes.remove("geometric_features")
+        attributes += [
+            "Sum_of_Eigenvalues",
+            "Omnivariance",
+            "Eigentropy",
+            "Anisotropy",
+            "Planarity",
+            "Linearity",
+            "Surface_Variation",
+            "Sphericity"
+        ]
+    if "std_of_cog" in attributes:
+        attributes.remove("std_of_cog")
+        attributes += ["std_x", "std_y", "std_z"]
+    if "center_of_voxel" in attributes:
+        attributes.remove("center_of_voxel")
+        attributes += ["center_x", "center_y", "center_z"]
+    if "corner_of_voxel" in attributes:
+        attributes.remove("corner_of_voxel")
+        attributes += ["corner_x", "corner_y", "corner_z"]
+    if "percentage_occupied" in attributes:
+        # not added as field, just printed to the user
+        attributes.remove("percentage_occupied")
+    return attributes
+
 
 def test_do_vapc_on_files_filenotfound(tmp_path, vapc_command_compute):
     voxel_size = 0.5
@@ -105,6 +160,7 @@ def test_do_vapc_on_files_invalid_computation(test_file, tmp_path):
                                               "voxel_index",
                                               "center_of_gravity",
                                               "std_of_cog",
+                                              "center_of_voxel",
                                               "corner_of_voxel",
                                               "percentage_occupied"
                                               ]}}]
@@ -120,50 +176,8 @@ def test_do_vapc_on_one_file_defaults(test_file, tmp_path, voxel_size, vapc_comm
     outfile_las = list(tmp_path.glob("*.laz"))[0]
     outfile_json = list(tmp_path.glob("*.json"))[0]
     las = laspy.read(outfile_las)
-    attributes = vapc_command["args"]["compute"]
-    if "center_of_gravity" in attributes:
-        attributes.remove("center_of_gravity")
-        attributes += ["cog_x", "cog_y", "cog_z"]
-    if "distance_to_center_of_gravity" in attributes:
-        attributes.remove("distance_to_center_of_gravity")
-        attributes += ["distance"]
-    if "covariance_matrix" in attributes:
-        attributes.remove("covariance_matrix")
-        attributes += [
-            "cov_xx",
-            "cov_xy",
-            "cov_xz",
-            "cov_yx",
-            "cov_yy",
-            "cov_yz",
-            "cov_zx",
-            "cov_zy",
-            "cov_zz"
-            ]
-    if "eigenvalues" in attributes:
-        attributes.remove("eigenvalues")
-        attributes += ["Eigenvalue_1", "Eigenvalue_2", "Eigenvalue_3"]
-    if "geometric_features" in attributes:
-        attributes.remove("geometric_features")
-        attributes += [
-            "Sum_of_Eigenvalues",
-            "Omnivariance", 
-            "Eigentropy", 
-            "Anisotropy",
-            "Planarity",
-            "Linearity",
-            "Surface_Variation",
-            "Sphericity"
-            ]
-    if "std_of_cog" in attributes:
-        attributes.remove("std_of_cog")
-        attributes += ["std_x", "std_y", "std_z"]
-    if "corner_of_voxel" in attributes:
-        attributes.remove("corner_of_voxel")
-        attributes += ["corner_x", "corner_y", "corner_z"]
-    if "percentage_occupied" in attributes:
-        # not added as field, just printed to the user
-        attributes.remove("percentage_occupied")
+    attributes = get_expected_las_fields(vapc_command)
+    if "percentage_occupied" in vapc_command["args"]["compute"]:
         captured = capfd.readouterr()
         assert "13.43 percent of the voxel space is occupied" in captured.out
     for attr in attributes:
@@ -172,36 +186,70 @@ def test_do_vapc_on_one_file_defaults(test_file, tmp_path, voxel_size, vapc_comm
             assert las.points[attr] is not None
 
 
-@pytest.mark.parametrize("voxel_size,vapc_command", 
-                         [
-                             [0.5, {"tool": "compute", 
-                                    "args": {"compute": 
-                                             ["big_int_index",
-                                              "hash_index",
-                                              "voxel_index",
-                                              "center_of_gravity",
-                                              "std_of_cog",
-                                              "corner_of_voxel"
-                                              ]}}],
-                         ])
-def test_do_vapc_on_files_defaults(list_of_test_files, tmp_path, voxel_size, vapc_command):
-    pass
+
+def test_do_vapc_on_files_defaults(list_of_test_files, tmp_path, vapc_command_compute):
+    voxel_size = 1.0
+    vapc.do_vapc_on_files(
+        file=list_of_test_files,
+        out_dir=tmp_path,
+        voxel_size=voxel_size,
+        vapc_command=vapc_command_compute,
+    )
+    outfiles = list(tmp_path.glob("*.laz"))
+    assert len(outfiles) == 1
+    outfile_json = list(tmp_path.glob("*.json"))[0]
+    assert outfile_json.exists()
+    attributes = get_expected_las_fields(vapc_command_compute)
+    las = laspy.read(outfiles[0])
+    for attr in attributes:
+        if not attr == "voxel_index":
+            assert las.points[attr] is not None
+    # assert number of points
+    assert len(las.points) == 13_522
+
 
 
 @pytest.mark.parametrize("voxel_size,vapc_command,tile,reduce_to,save_as", 
                          [
-                             [0.5, {"tool": "compute", 
-                                    "args": {"compute": 
+                             [1.0, {"tool": "compute",
+                                    "args": {"compute":
                                              ["big_int_index",
-                                              "hash_index",
-                                              "voxel_index",
                                               "center_of_gravity",
-                                              "std_of_cog",
-                                              "corner_of_voxel"
                                               ]}},
-                                              20, 
-                                              "center_of_voxel", 
+                                              20,
+                                              "center_of_voxel",
                                               ".las"],
+                             [1.0, {"tool": "compute",
+                                    "args": {"compute":
+                                             ["big_int_index",
+                                              "center_of_gravity",
+                                              ]}},
+                                              20,
+                                              "center_of_voxel",
+                                              ".ply"],
                          ])
-def test_do_vapc_on_one_file(test_file, tmp_path, voxel_size, vapc_command, tile, reduce_to, save_as):
-    pass
+def test_do_vapc_on_one_file(test_file_2, tmp_path, voxel_size, vapc_command, tile, reduce_to, save_as):
+    vapc.do_vapc_on_files(
+        file=test_file_2,
+        out_dir=tmp_path,
+        voxel_size=voxel_size,
+        vapc_command=vapc_command,
+        tile=tile,
+        reduce_to=reduce_to,
+        save_as=save_as
+    )
+    assert len(list(tmp_path.glob(f"*{save_as}"))) == 1
+    outfile = list(tmp_path.glob(f"*{save_as}"))[0]
+    outfile_json = list(tmp_path.glob("*.json"))[0]
+    attributes = get_expected_las_fields(vapc_command)
+    if save_as == ".las" or save_as == ".laz":
+        las = laspy.read(outfile)
+        for attr in attributes:
+            # ignore colums which we know are not numeric (i.e., not in the las file)
+            if not attr == "voxel_index":
+                assert las.points[attr] is not None
+    elif save_as == ".ply":
+        plydata = plyfile.PlyData.read(outfile)
+        properties = [p.name for p in plydata.elements[0].properties]
+        assert len(properties) == 22
+        assert set(attributes) <= set(properties)

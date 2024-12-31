@@ -1,4 +1,5 @@
 import laspy
+from laspy import LaspyException
 import numpy as np
 import os
 from pathlib import Path
@@ -35,6 +36,11 @@ def las_create_or_append(fh, las, mask, tile_name):
         if las.points.x[mask].shape[0] == 0:
             return False
         las_tile.points = las.points[mask]
+        if "HELIOS++" in las.header.generating_software or "HELIOS++" in header.generating_software:
+            try:
+                las_tile.remove_extra_dims(["ExtraBytes"])
+            except LaspyException:
+                pass  # 'ExtraBytes' dimension does not exist
         las_tile.write(tile_name)
         print("Created file:\t\t", tile_name)
     return True

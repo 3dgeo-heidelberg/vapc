@@ -1111,7 +1111,7 @@ class Vapc:
     @trace
     @timeit
     def compute_clusters(
-        self, cluster_distance, cluster_by=["voxel_x", "voxel_y", "voxel_z"]
+        self, cluster_distance, cluster_by=None
     ):
         """
         Groups data points into clusters based on spatial proximity within a specified distance.
@@ -1158,7 +1158,8 @@ class Vapc:
         >>> vapc_instance.compute_clusters(cluster_distance=1.0)
         >>> print(vapc_instance.df[['cluster_id', 'cluster_size']])
         """
-
+        if cluster_by is None:
+            cluster_by = ["voxel_x", "voxel_y", "voxel_z"]
         def _update_existing_objects(oc, indices, relevantPoints):
             obj, counts = np.unique(oc[indices[relevantPoints]], return_counts=True)
             existingObjects = obj[obj > 0]
