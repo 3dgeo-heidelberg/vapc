@@ -1083,30 +1083,55 @@ class Vapc:
         Choice of operators: ['equal_to', 'greater_than', 'less_than', 'greater_than_or_equal_to', 'less_than_or_equal_to', '==', '>', '<', '>=', '<=']
 
         Parameters:
-        - filter_attribute (str): The attribute (column name) of the DataFrame to apply the filter on.
-        - filter_value (Comparable): The value to compare the attribute against. Must be compatible with the type of the DataFrame attribute.
-        - min_max_eq (str): A string specifying the type of filter to apply.
+        ----------
+        filter_attribute : str
+            The attribute (column name) of the DataFrame to apply the filter on.
+        filter_value : int, float
+            The value to compare the attribute against. Must be compatible with the type of the DataFrame attribute.
+        min_max_eq : str 
+            A string specifying the type of filter to apply.
+        
+        Returns
+        -------
+        None
+        
+        Raises
+        ------
+        ValueError
+            If the `min_max_eq` parameter is not one of the valid filter strings.
+        KeyError
+            If the `filter_attribute` is not present in the DataFrame.
 
         Example:
         ```
         # Assuming `self.df` is a DataFrame with a column 'point_count'
-        self.filter_attributes('point_count', 'min_eq', 30)
+        self.filter_attributes('point_count', 'greater_than_or_equal_to', 30)
         # This will modify `self.df` to include only rows where 'point_count' is 30 or more.
         ```
         """
+        valid_strings = [
+            "equal_to", "==",
+            "not_equal_to", "!=",
+            "greater_than", ">",
+            "greater_than_or_equal_to", ">=",
+            "less_than", "<",
+            "less_than_or_equal_to", "<=",
+        ]
         min_max_eq = min_max_eq.lower()
-        if min_max_eq == "equal_to" or min_max_eq == "==":
+        if min_max_eq in ["equal_to", "=="]:
             self.df = self.df[self.df[filter_attribute] == filter_value]
-        elif min_max_eq == "greater_than" or min_max_eq == ">":
+        elif min_max_eq in ["not_equal_to", "!="]:
+            self.df = self.df[self.df[filter_attribute] != filter_value]
+        elif min_max_eq in ["greater_than", ">"]:
             self.df = self.df[self.df[filter_attribute] > filter_value]
-        elif min_max_eq == "greater_than_or_equal_to" or min_max_eq == ">=":
+        elif min_max_eq in ["greater_than_or_equal_to", ">="]:
             self.df = self.df[self.df[filter_attribute] >= filter_value]
-        elif min_max_eq == "less_than" or min_max_eq == "<":
+        elif min_max_eq in ["less_than", "<"]:
             self.df = self.df[self.df[filter_attribute] < filter_value]
-        elif min_max_eq == "less_than_or_equal_to" or min_max_eq == "<=":
+        elif min_max_eq in ["less_than_or_equal_to", "<="]:
             self.df = self.df[self.df[filter_attribute] <= filter_value]
         else:
-            print("Filter invalid, use eq, min, min_eq, max, and max_eq only.")
+            raise ValueError(f"Filter invalid, use only one of the following:\n\n{', '.join(valid_strings)}.")
 
     @trace
     @timeit
