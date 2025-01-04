@@ -229,7 +229,7 @@ def test_compute_attributes(vapc_dataset_geom_1m, attribute):
     vapc_dataset_geom_1m.compute = [attribute]
     method_name = f"vapc.Vapc.compute_{attribute}"
     with patch(method_name) as mock_method:
-        vapc_dataset_geom_1m.uested_attributes()
+        vapc_dataset_geom_1m.compute_requested_attributes()
         mock_method.assert_called_once()
 
 
