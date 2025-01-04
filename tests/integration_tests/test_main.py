@@ -42,6 +42,9 @@ def get_expected_las_fields(vapc_command):
     if "distance_to_center_of_gravity" in attributes:
         attributes.remove("distance_to_center_of_gravity")
         attributes += ["distance"]
+    if "closest_to_center_of_gravity" in attributes:
+        attributes.remove("closest_to_center_of_gravity")
+        attributes += ["min_distance"]
     if "covariance_matrix" in attributes:
         attributes.remove("covariance_matrix")
         attributes += [
