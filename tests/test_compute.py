@@ -88,7 +88,7 @@ def input_df_only_geom():
 
 
 @pytest.fixture
-def input_df_with_intensity():
+def input_df_with_intensity_nor():
     # create artificial dataframe for testing
     # starting with 500 points on a plane
     np.random.seed(42)
@@ -99,13 +99,16 @@ def input_df_with_intensity():
     z_coords += np.random.normal(0.0, 0.1, 500)
     # simulated intensity (normal distribution, mean=-5, std=5)
     intensity = np.random.normal(-3, 5, 500)
+    # simulated NOR (random int between 1 and 5)
+    nor = np.random.randint(1, 5, 500)
 
     # create dataframe
     df = pd.DataFrame({
         "X": x_coords,
         "Y": y_coords,
         "Z": z_coords,
-        "intensity": intensity
+        "intensity": intensity,
+        "number_of_returns": nor
     })
     # set minimum coords to RED_POINT
     df["X"] -= df["X"].min() - RED_POINT[0]
@@ -233,23 +236,34 @@ def test_compute_attributes(vapc_dataset_geom_1m, attribute):
         mock_method.assert_called_once()
 
 
-def test_compute_requested_statistics_per_attributes(input_df_with_intensity):
+@pytest.mark.parametrize(
+    "attribute,stats",
+    [
+        ["intensity", ["mean", "min", "max", "median", "sum", "mode"]],
+        ["number_of_returns", ["mode", "mode_count,0.1"]]
+    ]
+)
+def test_compute_requested_statistics_per_attributes(input_df_with_intensity_nor, attribute, stats):
     # initiate vapc object
     vapc_obj = vapc.Vapc(
         voxel_size=2.5
     )
     # set input dataframe
-    vapc_obj.df = input_df_with_intensity
-    vapc_obj.original_attributes = input_df_with_intensity.columns.tolist()
-    vapc_obj.attributes = {"intensity": ["mean"]}
+    vapc_obj.df = input_df_with_intensity_nor
+    vapc_obj.original_attributes = input_df_with_intensity_nor.columns.tolist()
+    vapc_obj.attributes = {attribute: stats}
     vapc_obj.compute_voxel_index()
     vapc_obj.compute_requested_statistics_per_attributes()
-    # assert
-    assert "intensity_mean" in vapc_obj.df.columns
-    # check if rows with the same voxel_index have the same intensity_mean
-    assert vapc_obj.df.groupby("voxel_index")["intensity_mean"].nunique().max() == 1
-    # check if the mean of the intensity_mean is the same as the mean of the input intensity
-    assert vapc_obj.df["intensity_mean"].mean() == input_df_with_intensity["intensity"].mean()
+    for stat in stats:
+        assert f"{attribute}_{stat}" in vapc_obj.df.columns
+        # check that points in the same voxel have the same value
+        assert vapc_obj.df.groupby("voxel_index")[f"{attribute}_{stat}"].nunique().max() == 1
+        if stat == "mean":
+            assert vapc_obj.df[f"{attribute}_{stat}"].mean() == input_df_with_intensity_nor[attribute].mean()
+        elif stat == "min":
+            assert vapc_obj.df[f"{attribute}_{stat}"].min() == input_df_with_intensity_nor[attribute].min()
+        elif stat == "max":
+            assert vapc_obj.df[f"{attribute}_{stat}"].max() == input_df_with_intensity_nor[attribute].max()
 
 
 def test_filter_attributes_invalid_filter(vapc_dataset_geom_1m):

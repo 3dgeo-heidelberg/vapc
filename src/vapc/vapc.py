@@ -2,7 +2,7 @@ import math
 import numpy as np
 from scipy.spatial import KDTree
 import pandas as pd
-from .utilities import trace, timeit
+from .utilities import trace, timeit, compute_mode_continuous
 
 
 class Vapc:
@@ -403,8 +403,11 @@ class Vapc:
                     elif stat == "sum":
                         value = group_slice.sum()
                     elif stat == "mode":
-                        counts = np.bincount(group_slice.astype(int))
-                        value = np.argmax(counts)
+                        try:
+                            counts = np.bincount(group_slice.astype(int))
+                            value = np.argmax(counts)
+                        except ValueError:
+                            value = compute_mode_continuous(group_slice)
                     elif "mode_count" in stat:
                         # Extract percentage threshold
                         try:
@@ -414,8 +417,13 @@ class Vapc:
                             raise ValueError(
                                 f"Invalid 'mode_count' specification for attribute '{attr}': '{stat}'"
                             ) from exc
-                        counts = np.bincount(group_slice.astype(int))
-                        counts_sum = counts.sum()
+                        try:
+                            counts = np.bincount(group_slice.astype(int))
+                            counts_sum = counts.sum()
+                        except ValueError as exc:
+                            raise ValueError(
+                                f"Cannot compute 'mode_count' for continuous attribute '{attr}'"
+                            ) from exc
                         proportions = counts / counts_sum
                         count_above_threshold = np.sum(proportions >= percentage)
                         value = count_above_threshold
@@ -458,6 +466,7 @@ class Vapc:
         )
 
         self.attributes_per_voxel = True
+
 
     @trace
     @timeit
