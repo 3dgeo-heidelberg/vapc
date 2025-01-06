@@ -35,6 +35,20 @@ def vapc_command_compute():
 
 
 def get_expected_las_fields(vapc_command):
+    """
+    Get the expected fields in the output las file based on the input vapc_command.
+
+    Parameters
+    ----------
+    vapc_command : dict
+        Dictionary containing Vapc command configurations, including the tool to use
+        and any additional arguments.
+
+    Returns
+    -------
+    list
+        List of expected fields in the output las file
+    """
     attributes = vapc_command["args"]["compute"]
     if "center_of_gravity" in attributes:
         attributes.remove("center_of_gravity")
@@ -89,6 +103,9 @@ def get_expected_las_fields(vapc_command):
 
 
 def test_do_vapc_on_files_filenotfound(tmp_path, vapc_command_compute):
+    """
+    Test that the `do_vapc_on_files` function raises a FileNotFoundError when the input file does not exist.
+    """
     voxel_size = 0.5
     with pytest.raises(FileNotFoundError):
         vapc.do_vapc_on_files(
@@ -100,6 +117,9 @@ def test_do_vapc_on_files_filenotfound(tmp_path, vapc_command_compute):
 
 
 def test_do_vapc_on_files_invalid_arg(test_file, tmp_path, vapc_command_compute):
+    """
+    Test that the `do_vapc_on_files` function raises a TypeError when an invalid argument is passed.
+    """
     voxel_size = 0.5
     with pytest.raises(TypeError):
         vapc.do_vapc_on_files(
@@ -114,6 +134,10 @@ def test_do_vapc_on_files_invalid_arg(test_file, tmp_path, vapc_command_compute)
 
 
 def test_do_vapc_on_files_invalid_tool_name(test_file, tmp_path):
+    """
+    Test that the `do_vapc_on_files` function raises a ValueError when an invalid tool
+    name is passed provided in the vapc_command.
+    """
     voxel_size = 0.5
     vapc_command = {
         "tool": "invalid_tool",
@@ -132,6 +156,10 @@ def test_do_vapc_on_files_invalid_tool_name(test_file, tmp_path):
 
 
 def test_do_vapc_on_files_invalid_computation(test_file, tmp_path):
+    """
+    Test that the `do_vapc_on_files` function raises a ValueError when an invalid computation
+    is requested in the vapc_command.
+    """
     voxel_size = 0.5
     vapc_command = {
         "tool": "compute",
@@ -169,6 +197,10 @@ def test_do_vapc_on_files_invalid_computation(test_file, tmp_path):
                                               ]}}]
                          ])
 def test_do_vapc_on_one_file_defaults(test_file, tmp_path, voxel_size, vapc_command, capfd):
+    """
+    Test that the `do_vapc_on_files` function processes a single file correctly
+    with default values for the optional parameters.
+    """
     vapc.do_vapc_on_files(
         file=test_file,
         out_dir=tmp_path,
@@ -191,6 +223,9 @@ def test_do_vapc_on_one_file_defaults(test_file, tmp_path, voxel_size, vapc_comm
 
 
 def test_do_vapc_on_files_defaults(list_of_test_files, tmp_path, vapc_command_compute):
+    """
+    Test that the `do_vapc_on_files` function processes multiple files correctly
+    """
     voxel_size = 1.0
     vapc.do_vapc_on_files(
         file=list_of_test_files,
@@ -232,6 +267,10 @@ def test_do_vapc_on_files_defaults(list_of_test_files, tmp_path, vapc_command_co
                                               ".ply"],
                          ])
 def test_do_vapc_on_one_file(test_file_2, tmp_path, voxel_size, vapc_command, tile, reduce_to, save_as):
+    """
+    Test that the `do_vapc_on_files` function processes a single file correctly
+    with non-default values for the optional parameters.
+    """
     vapc.do_vapc_on_files(
         file=test_file_2,
         out_dir=tmp_path,

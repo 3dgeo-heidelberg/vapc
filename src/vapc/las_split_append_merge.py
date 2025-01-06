@@ -237,7 +237,7 @@ def clip_to_bbox(laz_in, laz_out, bbox):
 def las_remove_buffer(folder):
     """
     Removes buffer zones from all LAS files in a specified folder by clipping them to their bounding boxes.
-    The bounding box is is encoded in the file name (min coords + tile size).
+    The bounding box is encoded in the file name (min coords + tile size).
 
     Parameters:
     - folder (str): Path to the folder containing LAS files to process.

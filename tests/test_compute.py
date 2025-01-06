@@ -10,6 +10,9 @@ RED_POINT = [120, 200, 3]
 
 
 def get_expected_columns(attributes):
+    """
+    Get the expected columns after computing requested attributes.
+    """
     if not isinstance(attributes, list):
         attributes = [attributes]
     if "center_of_gravity" in attributes:
@@ -65,6 +68,9 @@ def get_expected_columns(attributes):
 
 @pytest.fixture
 def input_df_only_geom():
+    """
+    Fixture for a dataframe with only geometric attributes (x, y, z coordinates).
+    """
     # create artificial dataframe for testing
     # starting with 500 points on a plane
     np.random.seed(42)
@@ -89,6 +95,9 @@ def input_df_only_geom():
 
 @pytest.fixture
 def input_df_with_intensity_nor():
+    """
+    Fixture for a dataframe with geometry (x, y, z), intensity and number of returns attributes.
+    """
     # create artificial dataframe for testing
     # starting with 500 points on a plane
     np.random.seed(42)
@@ -120,6 +129,9 @@ def input_df_with_intensity_nor():
 
 @pytest.fixture
 def vapc_dataset_clustering():
+    """
+    Fixture for a synthetic vapc object for testing clustering.
+    """
     # Parameters for the synthetic dataset
     n_samples = 300    # Total number of samples
     n_features = 3     # Number of dimensions (3D points)
@@ -154,6 +166,10 @@ def vapc_dataset_clustering():
 
 @pytest.fixture
 def vapc_dataset_geom_50cm(input_df_only_geom):
+    """
+    Fixture for a synthetic vapc object with only geometry (x, y, z)
+    and a voxel size of 0.5 m.
+    """
     # initiate vapc object
     vapc_obj = vapc.Vapc(
         voxel_size=0.5
@@ -167,6 +183,11 @@ def vapc_dataset_geom_50cm(input_df_only_geom):
 
 @pytest.fixture
 def vapc_dataset_geom_1m(input_df_only_geom):
+    """
+    Fixture for a synthetic vapc object with only geometry (x, y, z)
+    and a voxel size of 1 m.
+    """
+
     # initiate vapc object
     vapc_obj = vapc.Vapc(
         voxel_size=1
@@ -179,20 +200,29 @@ def vapc_dataset_geom_1m(input_df_only_geom):
 
 
 def test_compute_reduction_point(vapc_dataset_geom_50cm):
+    """
+    Test the computation of the reduction point.
+    """
     vapc_dataset_geom_50cm.compute_reduction_point()
     assert vapc_dataset_geom_50cm.reduction_point == RED_POINT
 
 
 def test_compute_offset(vapc_dataset_geom_50cm):
-    assert vapc_dataset_geom_50cm.offset_applied == False
+    """
+    Test the computation of the offset.
+    """
+    assert vapc_dataset_geom_50cm.offset_applied is False
     vapc_dataset_geom_50cm.compute_offset()
-    assert vapc_dataset_geom_50cm.offset_applied == True
+    assert vapc_dataset_geom_50cm.offset_applied is True
     assert vapc_dataset_geom_50cm.df["X"].min() == 0
     assert vapc_dataset_geom_50cm.df["Y"].min() == 0
     assert vapc_dataset_geom_50cm.df["Z"].min() == 0
 
 
 def test_compute_offset_reverse(vapc_dataset_geom_50cm):
+    """
+    Test the computation of the offset and its reversal.
+    """
     vapc_dataset_geom_50cm.compute_offset()
     assert vapc_dataset_geom_50cm.offset_applied is True
     vapc_dataset_geom_50cm.compute_offset()
@@ -203,6 +233,9 @@ def test_compute_offset_reverse(vapc_dataset_geom_50cm):
 
 
 def test_compute_clusters(vapc_dataset_clustering):
+    """
+    Test the computation of clusters.
+    """
     vapc_dataset_clustering.compute_clusters(cluster_distance=10.0)
     assert "cluster_id" in vapc_dataset_clustering.df.columns
     assert "cluster_size" in vapc_dataset_clustering.df.columns
@@ -228,6 +261,10 @@ def test_compute_clusters(vapc_dataset_clustering):
                           "corner_of_voxel"]
 )
 def test_compute_attributes(vapc_dataset_geom_1m, attribute):
+    """
+    Test the computation of requested attributes by mocking the
+    requested method and making sure it is called once.
+    """
     vapc_dataset_geom_1m.voxelize()
     vapc_dataset_geom_1m.compute = [attribute]
     method_name = f"vapc.Vapc.compute_{attribute}"
@@ -244,20 +281,26 @@ def test_compute_attributes(vapc_dataset_geom_1m, attribute):
     ]
 )
 def test_compute_requested_statistics_per_attributes(input_df_with_intensity_nor, attribute, stats):
+    """
+    Test the computation of requested statistics per attributes.
+    """
     # initiate vapc object
     vapc_obj = vapc.Vapc(
         voxel_size=2.5
     )
-    # set input dataframe
+    # set input dataframe and attributes
     vapc_obj.df = input_df_with_intensity_nor
     vapc_obj.original_attributes = input_df_with_intensity_nor.columns.tolist()
     vapc_obj.attributes = {attribute: stats}
+    # compute voxel_index and requested statistics
     vapc_obj.compute_voxel_index()
     vapc_obj.compute_requested_statistics_per_attributes()
     for stat in stats:
+        # check that the new columns are added
         assert f"{attribute}_{stat}" in vapc_obj.df.columns
         # check that points in the same voxel have the same value
         assert vapc_obj.df.groupby("voxel_index")[f"{attribute}_{stat}"].nunique().max() == 1
+        # check that the computed statistics are correct
         if stat == "mean":
             assert vapc_obj.df[f"{attribute}_{stat}"].mean() == input_df_with_intensity_nor[attribute].mean()
         elif stat == "min":
@@ -267,16 +310,27 @@ def test_compute_requested_statistics_per_attributes(input_df_with_intensity_nor
 
 
 def test_filter_attributes_invalid_filter(vapc_dataset_geom_1m):
+    """
+    Test that a Value Error is raised when an invalid 
+    filter string (`min_max_eq`) is provided.
+    """
     vapc_dataset_geom_1m.voxelize()
     vapc_dataset_geom_1m.compute = ["point_count"]
     vapc_dataset_geom_1m.compute_requested_attributes()
     with pytest.raises(ValueError):
-        vapc_dataset_geom_1m.filter_attributes(filter_attribute="point_count", min_max_eq="leq", filter_value=3)
+        vapc_dataset_geom_1m.filter_attributes(filter_attribute="point_count",
+                                               min_max_eq="leq",
+                                               filter_value=3)
 
 
 def test_filter_attributes_invalid_attribute(vapc_dataset_geom_1m):
+    """
+    Test that a Key Error is raised when an invalid filter attribute is provided.
+    """
     with pytest.raises(KeyError):
-        vapc_dataset_geom_1m.filter_attributes(filter_attribute="attribute", min_max_eq="<=", filter_value=3)
+        vapc_dataset_geom_1m.filter_attributes(filter_attribute="attribute",
+                                               min_max_eq="<=",
+                                               filter_value=3)
 
 
 @pytest.mark.parametrize("filter_attribute,filter_value,operator,expected_num_points", 
@@ -284,8 +338,14 @@ def test_filter_attributes_invalid_attribute(vapc_dataset_geom_1m):
                              ["point_count", 3, ">", 442],
                          ])
 def test_filter_attributes(vapc_dataset_geom_1m, filter_attribute, filter_value, operator, expected_num_points):
+    """
+    Test the filtering of attributes.
+    """
     vapc_dataset_geom_1m.voxelize()
+    # set and compute attribute
     vapc_dataset_geom_1m.compute = [filter_attribute]
     vapc_dataset_geom_1m.compute_requested_attributes()
+    # filter
     vapc_dataset_geom_1m.filter_attributes(filter_attribute=filter_attribute, min_max_eq=operator, filter_value=filter_value)
+    # check number of points
     assert vapc_dataset_geom_1m.df.shape[0] == expected_num_points

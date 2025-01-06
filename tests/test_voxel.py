@@ -18,6 +18,9 @@ MASK_Z = [0, 0, 1, 0]
 
 @pytest.fixture()
 def input_df_from_voxel():
+    """
+    Fixture to create a dataframe with points from a known voxel grid.
+    """
     # known voxel grid, 8 voxels
 
     # create coordinates: 5 points per voxel randomly distributed
@@ -41,6 +44,9 @@ def input_df_from_voxel():
 
 @pytest.fixture()
 def mask_df_from_voxel():
+    """
+    Fixture to create a dataframe with points from a known voxel grid (as mask).
+    """
     # known voxel grid, 4 voxels
 
     # create coordinates: 5 points per voxel randomly distributed
@@ -64,6 +70,9 @@ def mask_df_from_voxel():
 
 @pytest.fixture()
 def vapc_dataset_factory():
+    """
+    Factory to create a vapc object with a given input dataframe.
+    """
     def _create(input_df):
         # initiate vapc object
         vapc_obj = vapc.Vapc(
@@ -77,6 +86,9 @@ def vapc_dataset_factory():
 
 
 def test_voxelize(vapc_dataset_factory, input_df_from_voxel):
+    """
+    Test the voxelization of a dataset.
+    """
     # voxelize dataset
     vapc_dataset = vapc_dataset_factory(input_df_from_voxel)
     vapc_dataset.voxelize()
@@ -95,6 +107,9 @@ def test_voxelize(vapc_dataset_factory, input_df_from_voxel):
 
 
 def test_compute_voxel_index(vapc_dataset_factory, input_df_from_voxel):
+    """
+    Test the computation of voxel indices.
+    """
     vapc_dataset = vapc_dataset_factory(input_df_from_voxel)
     vapc_dataset.compute_voxel_index()
     # expected indices
@@ -113,6 +128,9 @@ def test_compute_voxel_index(vapc_dataset_factory, input_df_from_voxel):
 
 @pytest.mark.parametrize("n", [100000, 1000000000])
 def test_compute_big_int_index(vapc_dataset_factory, input_df_from_voxel, n):
+    """
+    Test the computation of big integer indices.
+    """
     vapc_dataset = vapc_dataset_factory(input_df_from_voxel)
     vapc_dataset.compute_big_int_index(n=n)
     assert vapc_dataset.big_int_index is True
@@ -132,6 +150,9 @@ def test_compute_big_int_index(vapc_dataset_factory, input_df_from_voxel, n):
 
 @pytest.mark.parametrize("n", [100000, 1000000000])
 def test_compute_hash_index(vapc_dataset_factory, input_df_from_voxel, n):
+    """
+    Test the computation of hash indices.
+    """
     p1 = 76690892503
     p2 = 15752609759
     p3 = 27174879103
@@ -153,6 +174,9 @@ def test_compute_hash_index(vapc_dataset_factory, input_df_from_voxel, n):
 
 
 def test_compute_voxel_corner(vapc_dataset_factory, input_df_from_voxel):
+    """
+    Test the computation of voxel corners.
+    """
     vapc_dataset = vapc_dataset_factory(input_df_from_voxel)
     # expected corners
     unique_corners = np.column_stack([VOXEL_X, VOXEL_Y, VOXEL_Z])
@@ -167,6 +191,9 @@ def test_compute_voxel_corner(vapc_dataset_factory, input_df_from_voxel):
 
 
 def test_compute_voxel_buffer(vapc_dataset_factory, input_df_from_voxel):
+    """
+    Test the computation of voxel buffers.
+    """
     buffer_size = 1
     vapc_dataset = vapc_dataset_factory(input_df_from_voxel)
     vapc_dataset.compute_voxel_buffer(buffer_size=buffer_size)
@@ -185,6 +212,9 @@ def test_compute_voxel_buffer(vapc_dataset_factory, input_df_from_voxel):
 
 
 def test_select_by_mask_in(vapc_dataset_factory, input_df_from_voxel, mask_df_from_voxel):
+    """
+    Test the selection of points inside a mask.
+    """
     # mask and voxelize the dataset
     vapc_dataset = vapc_dataset_factory(input_df_from_voxel)
     mask_dataset = vapc_dataset_factory(mask_df_from_voxel)
@@ -208,6 +238,9 @@ def test_select_by_mask_in(vapc_dataset_factory, input_df_from_voxel, mask_df_fr
 
 
 def test_select_by_mask_out(vapc_dataset_factory, input_df_from_voxel, mask_df_from_voxel):
+    """
+    Test the selection of points outside a mask.
+    """
     # mask and voxelize the dataset
     vapc_dataset = vapc_dataset_factory(input_df_from_voxel)
     mask_dataset = vapc_dataset_factory(mask_df_from_voxel)
@@ -231,6 +264,9 @@ def test_select_by_mask_out(vapc_dataset_factory, input_df_from_voxel, mask_df_f
 
 
 def test_subsampling_voxel_center(vapc_dataset_factory, input_df_from_voxel):
+    """
+    Test the subsampling of points at the center of voxels.
+    """
     vapc_dataset = vapc_dataset_factory(input_df_from_voxel)
     vapc_dataset.return_at = "center_of_voxel"
     vapc_dataset.reduce_to_voxels()
@@ -243,6 +279,9 @@ def test_subsampling_voxel_center(vapc_dataset_factory, input_df_from_voxel):
 
 
 def test_subsampling_cog(vapc_dataset_factory, input_df_from_voxel):
+    """
+    Test the subsampling of points at the center of gravity of voxels.
+    """
     vapc_dataset = vapc_dataset_factory(input_df_from_voxel)
     vapc_dataset.return_at = "center_of_gravity"
     vapc_dataset.reduce_to_voxels()
@@ -259,6 +298,9 @@ def test_subsampling_cog(vapc_dataset_factory, input_df_from_voxel):
 
 
 def test_subsampling_closest_to_cog(vapc_dataset_factory, input_df_from_voxel):
+    """
+    Test the subsampling of points to the points closest to the center of gravity of voxels.
+    """
     vapc_dataset = vapc_dataset_factory(input_df_from_voxel)
     vapc_dataset.return_at = "closest_to_center_of_gravity"
     vapc_dataset.reduce_to_voxels()

@@ -62,6 +62,9 @@ def temp_text_file(tmp_path):
 
 @pytest.mark.parametrize("to_string", [False, True])
 def test_load_las_single_file(test_file_path_1, to_string):
+    """
+    Test loading a single LAS file with DataHandler.
+    """
     if to_string:
         test_file_path_1 = str(test_file_path_1)
     dh = vapc.DataHandler(test_file_path_1)
@@ -77,6 +80,9 @@ def test_load_las_single_file(test_file_path_1, to_string):
 
 
 def test_load_las_vls_file(test_file_path_vls):
+    """
+    Test loading a HELIOS++-generated file with DataHandler.
+    """
     dh = vapc.DataHandler(test_file_path_vls)
     # expected
     shape = (61283, 15)
@@ -90,6 +96,9 @@ def test_load_las_vls_file(test_file_path_vls):
 
 
 def test_load_las_multiple_files(test_file_path_1, test_file_path_2):
+    """
+    Test loading multiple LAS files with DataHandler.
+    """
     dh = vapc.DataHandler([test_file_path_1, test_file_path_2])
     dh.load_las_files()
     # expected
@@ -97,12 +106,21 @@ def test_load_las_multiple_files(test_file_path_1, test_file_path_2):
     # assertions
     assert dh.df is not None
     assert dh.df.shape == shape
-    assert dh.attributes == ['intensity', 'bit_fields', 'raw_classification', 'scan_angle_rank', 'user_data', 'point_source_id', 'red', 'green', 'blue']
+    assert dh.attributes == ['intensity',
+                             'bit_fields',
+                             'raw_classification',
+                             'scan_angle_rank',
+                             'user_data',
+                             'point_source_id',
+                             'red', 'green', 'blue']
     assert dh.las_header is not None
     assert dh.df.columns.isin(['X', 'Y', 'Z']).any()
 
 
 def test_load_las_file_not_exists():
+    """
+    Test that an error is raised when trying to load a non-existing las file with DataHandler.
+    """
     dh = vapc.DataHandler("file_not_exists.laz")
     # TODO: Add extra error handling for invalid file extensions?
     with pytest.raises(FileNotFoundError):
@@ -110,6 +128,10 @@ def test_load_las_file_not_exists():
 
 
 def test_load_las_file_one_not_exists(test_file_path_1):
+    """
+    Test that an error is raised when trying to load several files with DataHandler
+    and one of the file paths is non-existing.
+    """
     dh = vapc.DataHandler([test_file_path_1, "file_not_exists.laz"])
     # TODO: Add extra error handling for invalid file extensions?
     with pytest.raises(FileNotFoundError):
@@ -118,6 +140,10 @@ def test_load_las_file_one_not_exists(test_file_path_1):
 
 @pytest.mark.parametrize("input", [300, [1, 2, 3], {"a": 1, "b": 2}, 3.14, None, True])
 def test_load_invalid_data_type(input):
+    """
+    Test that an error is raised when providing an invalid data type to DataHandler
+    (anything not PathLike).
+    """
     dh = vapc.DataHandler(input)
     # TODO: Validate data type and return custom error?
     with pytest.raises(AttributeError):
@@ -125,6 +151,9 @@ def test_load_invalid_data_type(input):
 
 
 def test_load_file_invalid_file_type(temp_text_file):
+    """
+    Test that an error is raised when trying to load a non-LAS file (ASCII file) with DataHandler.
+    """
     dh = vapc.DataHandler(temp_text_file)
     # TODO: Add extra error handling for invalid file extensions?
     with pytest.raises(LaspyException):
@@ -133,6 +162,9 @@ def test_load_file_invalid_file_type(temp_text_file):
 
 @pytest.mark.parametrize("infile", ["test_file_path_1", "test_file_path_vls"])
 def test_write_las_file(datahandler_factory, infile, request, tmp_path):
+    """
+    Test writing a LAS file with DataHandler.
+    """
     output_file = tmp_path / "output.laz"
     infile = request.getfixturevalue(infile)
     dh = datahandler_factory(infile)
@@ -152,6 +184,9 @@ def test_write_las_file(datahandler_factory, infile, request, tmp_path):
 
 @pytest.mark.parametrize("shift_to_voxel_center", [False, True])
 def test_write_ply_file(tmp_path, voxel_grid_laz_factory, test_file_path_2, datahandler_factory, shift_to_voxel_center):
+    """
+    Test writing a PLY file with DataHandler and whether the file content is correct.
+    """
     output_file = tmp_path / "output.ply"
     voxel_size = 2
     infile = voxel_grid_laz_factory(test_file_path_2, tmp_path, voxel_size)
@@ -198,6 +233,9 @@ def test_write_ply_file(tmp_path, voxel_grid_laz_factory, test_file_path_2, data
 
 
 def test_write_ply_file_overlapping_voxels(tmp_path, test_file_path_2, datahandler_factory):
+    """
+    Test that a warning is raised when trying to write a PLY file with overlapping voxels.
+    """
     output_file = tmp_path / "output.ply"
     voxel_size = 2
     dh = datahandler_factory(test_file_path_2)
