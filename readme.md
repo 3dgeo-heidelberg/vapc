@@ -55,7 +55,7 @@ $ python -m pip install -v --editable .
 
 # Documentation of software usage
 ## Jupyter Notebooks
-Examplary [Jupyter Notebooks](./jupyter) are available.
+Exemplary [Jupyter Notebooks](./jupyter) are available.
 
 ### Some useful tools provided by `vapc`
 * Subsampling of point clouds
