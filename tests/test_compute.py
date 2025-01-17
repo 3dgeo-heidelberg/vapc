@@ -302,11 +302,11 @@ def test_compute_requested_statistics_per_attributes(input_df_with_intensity_nor
         assert vapc_obj.df.groupby("voxel_index")[f"{attribute}_{stat}"].nunique().max() == 1
         # check that the computed statistics are correct
         if stat == "mean":
-            assert vapc_obj.df[f"{attribute}_{stat}"].mean() == input_df_with_intensity_nor[attribute].mean()
+            assert np.isclose(vapc_obj.df[f"{attribute}_{stat}"].mean(), input_df_with_intensity_nor[attribute].mean(), atol=1e-08, equal_nan=False)
         elif stat == "min":
-            assert vapc_obj.df[f"{attribute}_{stat}"].min() == input_df_with_intensity_nor[attribute].min()
+            assert np.isclose(vapc_obj.df[f"{attribute}_{stat}"].min(), input_df_with_intensity_nor[attribute].min(), atol=1e-08, equal_nan=False)
         elif stat == "max":
-            assert vapc_obj.df[f"{attribute}_{stat}"].max() == input_df_with_intensity_nor[attribute].max()
+            assert np.isclose(vapc_obj.df[f"{attribute}_{stat}"].max(), input_df_with_intensity_nor[attribute].max(), atol=1e-08, equal_nan=False)
 
 
 def test_filter_attributes_invalid_filter(vapc_dataset_geom_1m):
