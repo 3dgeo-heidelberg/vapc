@@ -10,7 +10,7 @@ readme = "README.md"
 maintainers = [
     { name = "Ronald Tabernig", email = "ronald.tabernig@uni-heidelberg.de" },
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 license = { text = "MIT" }
 classifiers = [
     "Programming Language :: Python :: 3",
