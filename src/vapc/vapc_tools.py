@@ -2,7 +2,7 @@ from .vapc import Vapc
 from .datahandler import DataHandler
 
 
-def initiate_vapc(lazfile, voxel_size, origin=[0, 0, 0]):
+def initiate_vapc(lazfile, voxel_size, origin=None):
     """
     Initializes a Vapc instance with the provided LAS/LAZ file and voxel parameters.
 
@@ -26,6 +26,8 @@ def initiate_vapc(lazfile, voxel_size, origin=[0, 0, 0]):
         - vapc_pc (Vapc): The initialized Vapc instance.
         - dh (DATA_HANDLER): The data handler instance containing the loaded data.
     """
+    if origin is None:
+        origin = [0, 0, 0]
     dh = DataHandler(lazfile)
     dh.load_las_files()
     vapc_pc = Vapc(float(voxel_size), origin)
@@ -405,11 +407,11 @@ def use_tool(tool_name, infile, outfile, voxel_size, args, reduce_to):
             vapc_pc=vapc_pc, statistics=args["statistics"], reduce_to=reduce_to
         )
     else:
-        return "unknown command:%s" % tool_name
+        raise ValueError(f"unknown tool '{tool_name}'")
     dh.save_as_las(outfile)
 
 
-def laSZ_to_ply(infile, outfile, voxel_size, shift_to_center=False):
+def lasz_to_ply(infile, outfile, voxel_size, shift_to_center=False):
     """
     Converts a LAS/LAZ file to PLY format.
 
@@ -433,7 +435,7 @@ def laSZ_to_ply(infile, outfile, voxel_size, shift_to_center=False):
 
     Examples
     --------
-    >>> laSZ_to_ply("data/input.laz", "data/output.ply", 0.5, shift_to_center=True)
+    >>> lasz_to_ply("data/input.laz", "data/output.ply", 0.5, shift_to_center=True)
     >>> print(os.path.exists("data/output.ply"))
     """
     dh = DataHandler(infile)

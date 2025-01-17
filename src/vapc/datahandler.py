@@ -1,39 +1,53 @@
-# For Data Handler:
 import os
 from pathlib import Path
+import warnings
 from plyfile import PlyData, PlyElement
 import laspy
+from laspy.errors import LaspyException
 import numpy as np
 import pandas as pd
 from .utilities import trace, timeit
 
 
 class DataHandler:
+    """
+    Handles loading, processing, and saving of LAS/LAZ point cloud data files.
+
+    The `DataHandler` class provides functionality to load multiple LAS/LAZ files,
+    convert them into a unified pandas DataFrame, and save the processed data in various
+    formats such as LAS, LAZ, and PLY. It is optimized to simplify workflows with the voxelizer
+    by managing data efficiently.
+
+    Parameters
+    ----------
+    infiles : str or list of str
+        A file path or a list of file paths to LAS/LAZ files that will be converted into a single DataFrame.
+
+    Attributes
+    ----------
+    files : list of str
+        List of input LAS/LAZ file paths.
+    df : pandas.DataFrame
+        DataFrame containing the loaded and processed point cloud data.
+    las_file : laspy.LasData
+        LasData object containing the LAS file data.
+    las_header : laspy.LasHeader
+        LasHeader object containing the LAS file header information.
+    attributes : list of str
+        List of attributes present in the LAS file.
+    voxel_size : float
+        Edge length of the voxels to be created if saving mesh to ply.
+    """
     def __init__(self, infiles):
-        """
-        Handles loading, processing, and saving of LAS/LAZ point cloud data files.
-
-        The `DataHandler` class provides functionality to load multiple LAS/LAZ files,
-        convert them into a unified pandas DataFrame, and save the processed data in various
-        formats such as LAS, LAZ, and PLY. It is optimized to simplify workflows with the voxelizer
-        by managing data efficiently.
-
-        Parameters
-        ----------
-        infiles : str or list of str
-            A file path or a list of file paths to LAS/LAZ files that will be converted into a single DataFrame.
-
-        Attributes
-        ----------
-        files : list of str
-            List of input LAS/LAZ file paths.
-        df : pandas.DataFrame
-            DataFrame containing the loaded and processed point cloud data.
-        """
         if isinstance(infiles, list):
             self.files = infiles
         else:
             self.files = [infiles]
+        self.df = None
+        self.las_file = None
+        self.las_header = None
+        self.attributes = None
+        self.voxel_size = None
 
     @trace
     @timeit
@@ -61,7 +75,9 @@ class DataHandler:
                 list(
                     map(self.attributes.remove, ["X", "Y", "Z"])
                 )  # remove XYZ as xyz should be read directly to not scale and shift the points in an extra step.
-                # using vls data one might have to remove the extrab dim
+                # using vls data one has to remove the ExtraBytes dim
+                if "HELIOS++" in self.las_header.generating_software:
+                    self.attributes.remove("ExtraBytes")
                 df = pd.DataFrame(
                     data=np.array(
                         [las.x, las.y, las.z] + [las[attr] for attr in self.attributes]
@@ -71,7 +87,7 @@ class DataHandler:
                 all_data.append(df)
 
         # Merge all data frames and append to existing or create new df
-        if hasattr(self, "df"):
+        if self.df is not None:
             self.df = pd.concat([self.df] + all_data, ignore_index=True)
         else:
             self.df = pd.concat(all_data, ignore_index=True)
@@ -111,7 +127,7 @@ class DataHandler:
         -------
         None
         """
-        if not hasattr(self, "df"):
+        if self.df is None:
             raise AttributeError("DataFrame not found. Please load data before saving.")
         if las_scales is None:
             las_scales = [0.00025, 0.00025, 0.00025]
@@ -122,30 +138,31 @@ class DataHandler:
         new_header.offsets = las_offset
         new_header.scales = las_scales
 
-        self.lasFile = laspy.LasData(new_header)
-        self.lasFile.x = self.df["X"]
-        self.lasFile.y = self.df["Y"]
-        self.lasFile.z = self.df["Z"]
-        # for VLS data...
-        try:
-            self.lasFile.remove_extra_dims(["ExtraBytes"])
-        except:
-            pass  # 'ExtraBytes' dimension does not exist
+        self.las_file = laspy.LasData(new_header)
+        self.las_file.x = self.df["X"]
+        self.las_file.y = self.df["Y"]
+        self.las_file.z = self.df["Z"]
+        # for VLS data
+        if "HELIOS++" in self.las_header.generating_software:
+            try:
+                self.las_file.remove_extra_dims(["ExtraBytes"])
+            except LaspyException:
+                pass  # 'ExtraBytes' dimension does not exist
         # Add other attributes to output:
         for name in self.df.columns:
             if name not in ["X", "Y", "Z"]:
                 try:
-                    self.lasFile[name] = self.df[name]
-                except:
-                    self._addDimensionToLaz(self.df[name].astype(np.float32), name)
-                    #print("Adding new dimension %s" % name)
+                    self.las_file[name] = self.df[name]
+                except ValueError:
+                    self._add_dimension_to_laz(self.df[name].astype(np.float32), name)
+                    # print(f"Adding new dimension {name}")
 
         if not os.path.exists(Path(outfile).parent):
             os.makedirs(Path(outfile).parent)
 
-        self.lasFile.write(outfile)
+        self.las_file.write(outfile)
 
-    def _addDimensionToLaz(self, array, name):
+    def _add_dimension_to_laz(self, array, name):
         """
         Adds a new attribute dimension to the LAZ file.
 
@@ -162,10 +179,10 @@ class DataHandler:
         -------
         None
         """
-        self.lasFile.add_extra_dim(
+        self.las_file.add_extra_dim(
             laspy.ExtraBytesParams(name=name, type=array.dtype, description=name)
         )
-        self.lasFile[name] = array
+        self.las_file[name] = array
 
     def _calculate_voxel_corners(self, df_values):
         """
@@ -220,7 +237,7 @@ class DataHandler:
         Saves the voxel data as cubes in a PLY file.
 
         Converts the voxelized DataFrame into a mesh representation and writes it to a PLY file.
-        Optionally shifts the data to origin for better visualization.
+        Optionally shifts the data to bbox center for better visualization.
 
         Parameters
         ----------
@@ -229,12 +246,18 @@ class DataHandler:
         voxel_size : float
             Edge length of the voxels to be created.
         shift_to_center : bool, optional
-            Shift data to origin. Useful for visualizations to center the object. Defaults to False.
+            Shift data to bbox center. Useful for visualizations to center the object. Defaults to False.
 
         Returns
         -------
         None
         """
+        assert voxel_size > 0, "Voxel size must be greater than 0"
+        if self.df is None:
+            raise AttributeError("DataFrame not found. Please load data before saving.")
+        self.voxel_size = voxel_size
+        self._validate_is_voxelized()
+
         # Adjust color values if necessary
         if (
             "red" in self.df.columns
@@ -250,17 +273,15 @@ class DataHandler:
                 self.df.green = (self.df.green / 65535.0 * 255).astype(np.uint8)
                 self.df.blue = (self.df.blue / 65535.0 * 255).astype(np.uint8)
 
-        self.voxel_size = voxel_size
-
         # Generate mesh data
         verts, faces = self._generate_mesh_data()
 
         if shift_to_center:
-            min_x = self.df.X.mean() + self.voxel_size / 2
-            min_y = self.df.Y.mean() + self.voxel_size / 2
-            min_z = self.df.Z.mean() + self.voxel_size / 2
-            min_coord = np.array([min_x, min_y, min_z])
-            verts[:, :3] -= min_coord
+            center_x = self.df.X.min() + (self.df.X.max() - self.df.X.min()) / 2
+            center_y = self.df.Y.min() + (self.df.Y.max() - self.df.Y.min()) / 2
+            center_z = self.df.Z.min() + (self.df.Z.max() - self.df.Z.min()) / 2
+            bbox_center = np.array([center_x, center_y, center_z])
+            verts[:, :3] -= bbox_center
 
         # Prepare vertex data for PLY file
         # Build the data type list for the structured array
@@ -302,7 +323,6 @@ class DataHandler:
         face_element = PlyElement.describe(face_array, "face")
 
         # Write to PLY file
-
         with open(outfile, "wb") as ply_file:
             PlyData([vertex_element, face_element], text=False).write(ply_file)
 
@@ -354,3 +374,26 @@ class DataHandler:
         faces += offset[:, np.newaxis]
 
         return corners, faces
+
+    def _validate_is_voxelized(self):
+        """
+        Validates if the data is voxelized properly.
+
+        If the coordinates do not correspond to voxel centers, a warning is issued.
+
+        Returns
+        -------
+        None
+        """
+        if self.df is None:
+            raise AttributeError("DataFrame not found. Please load data before saving.")
+        if self.voxel_size is None:
+            raise AttributeError("Voxel size not provided. Cannot validate if voxelized.")
+        # do "X", "Y" and "Z" correspond to voxel centers for the given voxel_size?
+        # We check if coords mod voxel size is the same for all points
+        if not len(np.unique(self.df[["X", "Y", "Z"]].values % self.voxel_size)) == 1:
+            warnings.warn(
+                "Caution: Data is not voxelized properly. Output may contain overlapping voxels. \n \
+                Please voxelize data using 'reduce_at'=='center_of_voxel' before saving as PLY",
+                UserWarning
+            )

@@ -1,15 +1,15 @@
-from vapc.vapc_tools import use_tool, laSZ_to_ply
-from vapc.las_split_append_merge import (
-    las_merge,
-    las_create_3DTiles,
-    las_remove_buffer,
-    laSZ_to_laSZ,
-)
-from vapc.utilities import trace, timeit, get_version
 import os
 import datetime
 import json
 import argparse
+from vapc.vapc_tools import use_tool, lasz_to_ply
+from vapc.las_split_append_merge import (
+    las_merge,
+    las_create_3dtiles,
+    las_remove_buffer,
+    lasz_to_lasz,
+)
+from vapc.utilities import trace, timeit, get_version
 
 
 @trace
@@ -35,6 +35,7 @@ def do_vapc_on_files(
     ----------
     file : str or list of str
         Path to a single LAS/LAZ file or a list of paths to LAS/LAZ files to be processed.
+        If a list is provided, the LAS/LAZ files will be merged and then voxelized.
     out_dir : str
         Directory where output files and configurations will be saved.
     voxel_size : float
@@ -83,15 +84,15 @@ def do_vapc_on_files(
     # document settings
     config = vapc_command
     config["vapc_version"] = get_version()
-    config["file"] = file
-    config["out_dir"] = out_dir
+    config["file"] = str(file)
+    config["out_dir"] = str(out_dir)
     config["voxel_size"] = voxel_size
     config["reduce_to"] = reduce_to
     config["tile"] = tile
     config["save_as"] = save_as
     # generate filepaths
-    outfile = os.path.join(out_dir, vapc_command["tool"] + "_%s.las" % timestamp)
-    outconfig = os.path.join(out_dir, vapc_command["tool"] + "_%s_cfg.json" % timestamp)
+    outfile = os.path.join(out_dir, vapc_command["tool"] + f"_{timestamp}.las")
+    outconfig = os.path.join(out_dir, vapc_command["tool"] + f"_{timestamp}_cfg.json")
     # Use temporary tiling for big datasets
     if tile:
         tile_dir = os.path.join(out_dir, "temp_tiles")
@@ -105,9 +106,9 @@ def do_vapc_on_files(
         else:
             inlas = file
 
-        all_tiles = las_create_3DTiles(
+        all_tiles = las_create_3dtiles(
             lazfile=inlas,
-            outDir=tile_dir,
+            out_dir=tile_dir,
             tilesize=tile,
             tilename="temptile",
             buffer=(voxel_size / 2),
@@ -152,14 +153,14 @@ def do_vapc_on_files(
 
     if save_as == ".laz":
         laz_out = outfile.replace(".las", ".laz")
-        laSZ_to_laSZ(outfile,laz_out)
+        lasz_to_lasz(outfile, laz_out)
         os.remove(outfile)
         return laz_out
     if save_as == ".las":
         return outfile
     if save_as == ".ply":
         ply_out = outfile.replace(".las", ".ply")
-        laSZ_to_ply(infile=outfile,
+        lasz_to_ply(infile=outfile,
                     outfile=ply_out,
                     voxel_size=voxel_size,
                     shift_to_center=False)

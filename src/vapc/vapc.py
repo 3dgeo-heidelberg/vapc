@@ -1,12 +1,12 @@
-# For Vapc:
-import numpy as np
 import math
+import numpy as np
 from scipy.spatial import KDTree
 import pandas as pd
-from .utilities import trace, timeit
+from .utilities import trace, timeit, compute_mode_continuous
 
 
 class Vapc:
+    # TODO: @Ronny: Why AVAILABE_COMPUTATIONS as class attribute and as instance attribute?
     AVAILABLE_COMPUTATIONS = [
         "big_int_index",
         "hash_index",
@@ -87,6 +87,8 @@ class Vapc:
             "center_of_voxel",
             "corner_of_voxel",
         ]
+        self.df = None
+        self.original_attributes = None
 
         # Calculations not applied yet:
         self.attributes_up_to_data = False
@@ -144,12 +146,12 @@ class Vapc:
         data_handler : DATA_HANDLER
             An instance of the DATA_HANDLER class from which to move the dataframe.
         """
-        if not hasattr(data_handler, "df"):
+        if data_handler.df is None:
             raise AttributeError(
                 "The provided data_handler does not have a 'df' attribute."
             )
         self.df = data_handler.df
-        del data_handler.df  # Remove df from data_handler
+        data_handler.df = None  # Remove df from data_handler
         self.original_attributes = self.df.columns.tolist()
 
     @trace
@@ -401,19 +403,27 @@ class Vapc:
                     elif stat == "sum":
                         value = group_slice.sum()
                     elif stat == "mode":
-                        counts = np.bincount(group_slice.astype(int))
-                        value = np.argmax(counts)
+                        try:
+                            counts = np.bincount(group_slice.astype(int))
+                            value = np.argmax(counts)
+                        except ValueError:
+                            value = compute_mode_continuous(group_slice)
                     elif "mode_count" in stat:
                         # Extract percentage threshold
                         try:
                             _, percentage_str = stat.split(",")
                             percentage = float(percentage_str)
-                        except ValueError:
+                        except ValueError as exc:
                             raise ValueError(
                                 f"Invalid 'mode_count' specification for attribute '{attr}': '{stat}'"
-                            )
-                        counts = np.bincount(group_slice.astype(int))
-                        counts_sum = counts.sum()
+                            ) from exc
+                        try:
+                            counts = np.bincount(group_slice.astype(int))
+                            counts_sum = counts.sum()
+                        except ValueError as exc:
+                            raise ValueError(
+                                f"Cannot compute 'mode_count' for continuous attribute '{attr}'"
+                            ) from exc
                         proportions = counts / counts_sum
                         count_above_threshold = np.sum(proportions >= percentage)
                         value = count_above_threshold
@@ -456,6 +466,7 @@ class Vapc:
         )
 
         self.attributes_per_voxel = True
+
 
     @trace
     @timeit
@@ -594,7 +605,7 @@ class Vapc:
         - Removes voxel columns and `mask_attribute` from `self.df` after filtering.
         """
 
-        if not hasattr(self, "df") or not hasattr(vapc_mask, "df"):
+        if self.df is None or vapc_mask.df is None:
             raise AttributeError("Both `self.df` and `vapc_mask.df` must exist.")
 
         if self.voxelized is False:
@@ -646,7 +657,7 @@ class Vapc:
     @trace
     @timeit
     def compute_hash_index(
-        self, p1=76690892503, p2=15752609759, p3=27174879103, n=2**100
+        self, p1=76690892503, p2=15752609759, p3=27174879103, n=2**10
     ):
         """
         Computes the hash index for all occupied voxels.
@@ -656,7 +667,7 @@ class Vapc:
         p1, p2, p3 : int, optional
             Large prime numbers used in the hashing function.
         n : int, optional
-            Modulus for the hashing function. Defaults to 2**100.
+            Modulus for the hashing function. Defaults to 2**10.
 
         Notes
         -----
@@ -701,7 +712,8 @@ class Vapc:
         """
         if self.point_count is False:
             self.compute_point_count()
-            self.drop_columns += ["point_count"]
+            if "point_count" not in self.compute:
+                self.drop_columns += ["point_count"]
         self.df["point_density"] = self.df["point_count"] / (self.voxel_size**3)
         self.point_density = True
 
@@ -721,7 +733,8 @@ class Vapc:
         """
         if self.voxel_index is False:
             self.compute_voxel_index()
-            self.drop_columns += ["voxel_index"]
+            if "voxel_index" not in self.compute:
+                self.drop_columns += ["voxel_index"]
         x_min, x_max = self.df["voxel_x"].min(), self.df["voxel_x"].max()
         y_min, y_max = self.df["voxel_y"].min(), self.df["voxel_y"].max()
         z_min, z_max = self.df["voxel_z"].min(), self.df["voxel_z"].max()
@@ -735,7 +748,7 @@ class Vapc:
         self.percentage_occupied = round(
             nr_of_occupied_voxels / nr_of_voxels_within_bounding_box * 100, 2
         )
-        #print("%s percent of the voxel space is occupied" % self.percentage_occupied)
+        # print(f"{self.percentage_occupied} percent of the voxel space is occupied")
 
     def compute_distance_to_center_of_gravity(self):
         """
@@ -748,7 +761,8 @@ class Vapc:
         """
         if self.center_of_gravity is False:
             self.compute_center_of_gravity()
-            self.drop_columns += ["cog_x", "cog_y", "cog_z"]
+            if "center_of_gravity" not in self.compute:
+                self.drop_columns += ["cog_x", "cog_y", "cog_z"]
 
         self.df["distance"] = np.sqrt(
             (self.df["X"] - self.df["cog_x"]) ** 2
@@ -773,10 +787,12 @@ class Vapc:
         """
         if not self.center_of_gravity:
             self.compute_center_of_gravity()
-            self.drop_columns += ["cog_x", "cog_y", "cog_z"]
+            if "center_of_gravity" not in self.compute:
+                self.drop_columns += ["cog_x", "cog_y", "cog_z"]
         if not self.distance_to_center_of_gravity:
             self.compute_distance_to_center_of_gravity()
-            self.drop_columns += ["distance"]
+            if "distance_to_center_of_gravity" not in self.compute:
+                self.drop_columns += ["distance"]
         grouped = self.df.groupby(["cog_x", "cog_y", "cog_z"])
         self.voxel_cls2cog = grouped[["distance"]].min().reset_index()
         self.voxel_cls2cog.rename(columns={"distance": "min_distance"}, inplace=True)
@@ -935,17 +951,18 @@ class Vapc:
 
         if self.covariance_matrix is False:
             self.compute_covariance_matrix()
-            self.drop_columns += [
-                "cov_xx",
-                "cov_xy",
-                "cov_xz",
-                "cov_yx",
-                "cov_yy",
-                "cov_yz",
-                "cov_zx",
-                "cov_zy",
-                "cov_zz",
-            ]
+            if "covariance_matrix" not in self.compute:
+                self.drop_columns += [
+                    "cov_xx",
+                    "cov_xy",
+                    "cov_xz",
+                    "cov_yx",
+                    "cov_yy",
+                    "cov_yz",
+                    "cov_zx",
+                    "cov_zy",
+                    "cov_zz",
+                ]
         grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"])
         eig_df = grouped.apply(_eigenvalues)
         col_names = ["Eigenvalue_1", "Eigenvalue_2", "Eigenvalue_3"]
@@ -971,7 +988,8 @@ class Vapc:
         """
         if self.eigenvalues is False:
             self.compute_eigenvalues()
-            self.drop_columns += ["Eigenvalue_1", "Eigenvalue_2", "Eigenvalue_3"]
+            if "eigenvalues" not in self.compute:
+                self.drop_columns += ["Eigenvalue_1", "Eigenvalue_2", "Eigenvalue_3"]
         self.df["Sum_of_Eigenvalues"] = (
             self.df["Eigenvalue_1"] + self.df["Eigenvalue_2"] + self.df["Eigenvalue_3"]
         )
@@ -1051,7 +1069,8 @@ class Vapc:
             self.df = self.df[self.df["distance"] == self.df["min_distance"]]
         else:
             print(
-                f"Voxels cannot be reduced to {self.return_at},try 'center_of_gravity', 'center_of_voxel', 'closest_to_center_of_gravity', or 'corner_of_voxel'"
+                f"Voxels cannot be reduced to {self.return_at},\n \
+                    try 'center_of_gravity', 'center_of_voxel', 'closest_to_center_of_gravity', or 'corner_of_voxel'"
             )
             return
 
@@ -1060,7 +1079,7 @@ class Vapc:
             self.df[col_name] = self.df[self.new_column_names[col_name]]
         self.df = self.df.drop(set(self.drop_columns), axis=1)
         self.df = self.df.drop_duplicates()
-        self.df = self.df.groupby(["X", "Y", "Z"], as_index=False).median()
+        self.df = self.df.groupby(["X", "Y", "Z"], as_index=False).median(numeric_only=True)
         self.reduced = True
 
     @trace
@@ -1073,35 +1092,60 @@ class Vapc:
         Choice of operators: ['equal_to', 'greater_than', 'less_than', 'greater_than_or_equal_to', 'less_than_or_equal_to', '==', '>', '<', '>=', '<=']
 
         Parameters:
-        - filter_attribute (str): The attribute (column name) of the DataFrame to apply the filter on.
-        - filter_value (Comparable): The value to compare the attribute against. Must be compatible with the type of the DataFrame attribute.
-        - min_max_eq (str): A string specifying the type of filter to apply.
+        ----------
+        filter_attribute : str
+            The attribute (column name) of the DataFrame to apply the filter on.
+        filter_value : int, float
+            The value to compare the attribute against. Must be compatible with the type of the DataFrame attribute.
+        min_max_eq : str 
+            A string specifying the type of filter to apply.
+        
+        Returns
+        -------
+        None
+        
+        Raises
+        ------
+        ValueError
+            If the `min_max_eq` parameter is not one of the valid filter strings.
+        KeyError
+            If the `filter_attribute` is not present in the DataFrame.
 
         Example:
         ```
         # Assuming `self.df` is a DataFrame with a column 'point_count'
-        self.filter_attributes('point_count', 'min_eq', 30)
+        self.filter_attributes('point_count', 'greater_than_or_equal_to', 30)
         # This will modify `self.df` to include only rows where 'point_count' is 30 or more.
         ```
         """
+        valid_strings = [
+            "equal_to", "==",
+            "not_equal_to", "!=",
+            "greater_than", ">",
+            "greater_than_or_equal_to", ">=",
+            "less_than", "<",
+            "less_than_or_equal_to", "<=",
+        ]
         min_max_eq = min_max_eq.lower()
-        if min_max_eq == "equal_to" or min_max_eq == "==":
+        if min_max_eq in ["equal_to", "=="]:
             self.df = self.df[self.df[filter_attribute] == filter_value]
-        elif min_max_eq == "greater_than" or min_max_eq == ">":
+        elif min_max_eq in ["not_equal_to", "!="]:
+            self.df = self.df[self.df[filter_attribute] != filter_value]
+        elif min_max_eq in ["greater_than", ">"]:
             self.df = self.df[self.df[filter_attribute] > filter_value]
-        elif min_max_eq == "greater_than_or_equal_to" or min_max_eq == ">=":
+        elif min_max_eq in ["greater_than_or_equal_to", ">="]:
             self.df = self.df[self.df[filter_attribute] >= filter_value]
-        elif min_max_eq == "less_than" or min_max_eq == "<":
+        elif min_max_eq in ["less_than", "<"]:
             self.df = self.df[self.df[filter_attribute] < filter_value]
-        elif min_max_eq == "less_than_or_equal_to" or min_max_eq == "<=":
+        elif min_max_eq in ["less_than_or_equal_to", "<="]:
             self.df = self.df[self.df[filter_attribute] <= filter_value]
         else:
-            print("Filter invalid, use eq, min, min_eq, max, and max_eq only.")
+            raise ValueError(f"Filter invalid, use only one of the following:\n\n{', '.join(valid_strings)}.")
 
     @trace
     @timeit
     def compute_clusters(
-        self, cluster_distance, cluster_by=["voxel_x", "voxel_y", "voxel_z"]
+        self, cluster_distance, cluster_by=None
     ):
         """
         Groups data points into clusters based on spatial proximity within a specified distance.
@@ -1148,7 +1192,11 @@ class Vapc:
         >>> vapc_instance.compute_clusters(cluster_distance=1.0)
         >>> print(vapc_instance.df[['cluster_id', 'cluster_size']])
         """
-
+        if cluster_by is None:
+            cluster_by = ["voxel_x", "voxel_y", "voxel_z"]
+        if not self.voxelized:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
         def _update_existing_objects(oc, indices, relevantPoints):
             obj, counts = np.unique(oc[indices[relevantPoints]], return_counts=True)
             existingObjects = obj[obj > 0]

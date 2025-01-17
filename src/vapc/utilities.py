@@ -5,6 +5,8 @@ import time
 # import toml #not needed atm
 import pkg_resources
 
+import numpy as np
+
 
 def get_version():
     return pkg_resources.get_distribution("vapc").version
@@ -107,3 +109,51 @@ def timeit(func):
             return func(*args, **kwargs)
 
     return wrapper
+
+
+def compute_mode_continuous(data):
+    """
+    Compute the mode of a continuous dataset using a histogram.
+
+    Parameters:
+        data (array-like): The data to analyze.
+    
+    Returns:
+        float: The mode of the dataset.
+    """
+    bins = optimal_bins(data, method="fd")
+    # Compute the histogram and find the bin with the maximum density
+    counts, bin_edges = np.histogram(data, bins=bins, density=True)
+    max_bin_index = np.argmax(counts)
+    # Calculate the mode as the center of the bin with the highest density
+    return (bin_edges[max_bin_index] + bin_edges[max_bin_index + 1]) / 2
+
+
+def optimal_bins(data, method='fd'):
+    """
+    Compute the optimal number of bins for a histogram using various rules.
+
+    Parameters:
+        data (array-like): The data to analyze.
+        method (str): The rule to use ('sqrt', 'sturges', 'rice', 'fd', 'scott').
+
+    Returns:
+        int: The optimal number of bins.
+    """
+    n = len(data)
+    if method == 'sqrt':
+        return int(np.sqrt(n))
+    elif method == 'sturges':
+        return int(np.ceil(np.log2(n) + 1))
+    elif method == 'rice':
+        return int(np.ceil(2 * n**(1 / 3)))
+    elif method == 'fd':  # Freedman-Diaconis
+        iqr = np.subtract(*np.percentile(data, [75, 25]))
+        bin_width = 2 * iqr / n**(1 / 3)
+        return int(np.ceil((np.max(data) - np.min(data)) / bin_width))
+    elif method == 'scott':
+        std_dev = np.std(data)
+        bin_width = 3.5 * std_dev / n**(1 / 3)
+        return int(np.ceil((np.max(data) - np.min(data)) / bin_width))
+    else:
+        raise ValueError(f"Unknown method: {method}")
