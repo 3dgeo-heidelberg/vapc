@@ -8,3 +8,5 @@ sphinx
 sphinx_mdinclude
 sphinx_rtd_theme
 sphinx-autodoc-typehints
+pkg_resources
+sklearn
