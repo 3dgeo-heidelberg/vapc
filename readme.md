@@ -69,7 +69,7 @@ Exemplary [Jupyter Notebooks](./jupyter) are available.
 Using vapc from the command line with config files is explained in the [how to command line](how_to_command_line.md). 
 
 # Download
-A small test dataset is currently provided in [test data](./test_data).
+A small test dataset is currently provided in [test data](./tests/test_data).
 
 # Related
 [3DGeo Research Group, Heidelberg University](https://github.com/3dgeo-heidelberg) - Focused on the development of methods for the geographic analysis of 3D/4D point clouds.
