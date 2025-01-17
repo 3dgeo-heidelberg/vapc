@@ -25,7 +25,7 @@ def las_create_or_append(fh, las, mask, tile_name):
             app_p = las.points[mask]
             print(app_p)
             lf.append_points(app_p)
-            print("Appended points to:\t", tile_name)
+            #print("Appended points to:\t", tile_name)
     else:
         header = laspy.LasHeader(
             point_format=fh.header.point_format, version=fh.header.version
@@ -42,7 +42,7 @@ def las_create_or_append(fh, las, mask, tile_name):
             except LaspyException:
                 pass  # 'ExtraBytes' dimension does not exist
         las_tile.write(tile_name)
-        print("Created file:\t\t", tile_name)
+        # print("Created file:\t\t", tile_name)
     return True
 
 
@@ -65,7 +65,7 @@ def las_merge(filepaths, outfile):
                 continue
             else:
                 las.write(outfile)
-                print(f"Created {outfile}. Merging now...")
+                #print(f"Created {outfile}. Merging now...")
                 break
     with laspy.open(outfile, "a") as lf:
         scales = lf.header.scales
@@ -157,7 +157,7 @@ def las_create_3dtiles(lazfile, out_dir, tilesize, tilename="", buffer=0):
     z_verts = np.arange(z_min, z_min + z_tiles * tilesize + 1, tilesize)
     tile_names = []
     masks = []
-    print(f"Generating masks for {x_tiles * y_tiles * z_tiles} potential tiles ... ")
+    # print(f"Generating masks for {x_tiles * y_tiles * z_tiles} potential tiles ... ")
     for x_tile in range(x_tiles):
         tile_min_x = round(x_verts[x_tile], 3)
         tile_max_x = round(x_verts[x_tile + 1], 3)
@@ -182,7 +182,7 @@ def las_create_3dtiles(lazfile, out_dir, tilesize, tilename="", buffer=0):
 
                 tile_names.append(out_tile)
                 masks.append(mask_all)
-    print("Created masks")
+    #print("Created masks")
     write_tile_for_lasfile = partial(las_create_or_append, fh, las)
 
     # Clip point clouds
