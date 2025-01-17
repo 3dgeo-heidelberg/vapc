@@ -9,4 +9,4 @@ sphinx_mdinclude
 sphinx_rtd_theme
 sphinx-autodoc-typehints
 setuptools
-sklearn
+scikit-learn
