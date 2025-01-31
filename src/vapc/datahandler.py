@@ -143,7 +143,7 @@ class DataHandler:
         self.las_file.y = self.df["Y"]
         self.las_file.z = self.df["Z"]
         # for VLS data
-        if "HELIOS++" in self.las_header.generating_software:
+        if "HELIOS++" in self.las_file.header.generating_software:
             try:
                 self.las_file.remove_extra_dims(["ExtraBytes"])
             except LaspyException:
