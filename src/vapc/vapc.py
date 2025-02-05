@@ -811,17 +811,21 @@ class Vapc:
         -----
         - Adds 'cog_x', 'cog_y', 'cog_z' to `self.df`.
         """
-        if self.voxelized is False:
+        if not self.voxelized:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"])
-        self.voxel_cog = grouped[["X", "Y", "Z"]].mean().reset_index()
-        self.voxel_cog.rename(
-            columns={"X": "cog_x", "Y": "cog_y", "Z": "cog_z"}, inplace=True
-        )
-        self.df = self.df.merge(
-            self.voxel_cog, how="left", on=["voxel_x", "voxel_y", "voxel_z"]
-        )
+
+        # Use groupby with transform to compute the mean of the X, Y, Z columns for each voxel,
+        # and broadcast the computed means back to self.df without an expensive merge.
+        cog = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"], sort=False
+                              )[["X", "Y", "Z"]].transform("mean")
+        
+        # Rename the columns to the desired names.
+        cog.columns = ["cog_x", "cog_y", "cog_z"]
+
+        # Assign the computed center-of-gravity columns directly to the DataFrame.
+        self.df[["cog_x", "cog_y", "cog_z"]] = cog
+
         self.center_of_gravity = True
 
     @trace
