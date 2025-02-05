@@ -816,7 +816,7 @@ class Vapc:
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
 
         # Use groupby with transform to compute the mean of the X, Y, Z columns for each voxel,
-        # and broadcast the computed means back to self.df without an expensive merge.
+        # and broadcast the computed means back to self.df without an merge.
         cog = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"], sort=False
                               )[["X", "Y", "Z"]].transform("mean")
         
@@ -838,17 +838,29 @@ class Vapc:
         -----
         - Adds 'std_x', 'std_y', 'std_z' to `self.df`.
         """
-        if self.voxelized is False:
+        # Ensure the DataFrame is voxelized; if not, voxelize and note columns to drop.
+        if not self.voxelized:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"])
-        self.voxel_cog = grouped[["X", "Y", "Z"]].std().reset_index()
-        self.voxel_cog.rename(
-            columns={"X": "std_x", "Y": "std_y", "Z": "std_z"}, inplace=True
-        )
-        self.df = self.df.merge(
-            self.voxel_cog, how="left", on=["voxel_x", "voxel_y", "voxel_z"]
-        )
+
+        # --------------------------------------------------------------------------
+        # CHANGES:
+        # - Instead of performing a groupby followed by computing std, resetting index,
+        #   renaming columns, and then merging back, we use groupby with transform.
+        # - The transform method computes the standard deviation for each group and 
+        #   broadcasts the results back to the original DataFrame's shape.
+        # - This avoids the expensive merge operation.
+        # --------------------------------------------------------------------------
+        std_values = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"], sort=False
+                                     )[["X", "Y", "Z"]].transform("std")
+        
+        # Rename the resulting columns to reflect standard deviation values.
+        std_values.columns = ["std_x", "std_y", "std_z"]
+
+        # Directly assign the computed standard deviation columns to self.df.
+        self.df[["std_x", "std_y", "std_z"]] = std_values
+
+        # Mark that the standard deviation of the center of gravity has been computed.
         self.std_of_cog = True
 
     @trace
