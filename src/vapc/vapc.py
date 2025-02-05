@@ -1073,12 +1073,13 @@ class Vapc:
                     try 'center_of_gravity', 'center_of_voxel', 'closest_to_center_of_gravity', or 'corner_of_voxel'"
             )
             return
-
         # Update columns with their required values
         for col_name in self.new_column_names.keys():
             self.df[col_name] = self.df[self.new_column_names[col_name]]
+
         self.df = self.df.drop(set(self.drop_columns), axis=1)
-        self.df = self.df.drop_duplicates()
+
+        self.df.drop_duplicates(subset=["X", "Y", "Z"], inplace=True)
         self.df = self.df.groupby(["X", "Y", "Z"], as_index=False).median(numeric_only=True)
         self.reduced = True
 
