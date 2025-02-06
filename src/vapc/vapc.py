@@ -1002,10 +1002,19 @@ class Vapc:
         'Omnivariance', 'Eigentropy', 'Anisotropy', 'Planarity', 'Linearity',
         'Surface_Variation', and 'Sphericity'.
         """
+        def safe_log(x):
+            # Return 0 when x is 0; otherwise return the log.
+            return np.where(x > 0, np.log(x), 0)
         if self.eigenvalues is False:
             self.compute_eigenvalues()
             if "eigenvalues" not in self.compute:
                 self.drop_columns += ["Eigenvalue_1", "Eigenvalue_2", "Eigenvalue_3"]
+        # Normalize eigenvalues so they sum to 1 for each row
+        total = self.df["Eigenvalue_1"] + self.df["Eigenvalue_2"] + self.df["Eigenvalue_3"]
+        self.df["Eigenvalue_1_n"] = self.df["Eigenvalue_1"] / total
+        self.df["Eigenvalue_2_n"] = self.df["Eigenvalue_2"] / total
+        self.df["Eigenvalue_3_n"] = self.df["Eigenvalue_3"] / total
+
         self.df["Sum_of_Eigenvalues"] = (
             self.df["Eigenvalue_1"] + self.df["Eigenvalue_2"] + self.df["Eigenvalue_3"]
         )
@@ -1013,10 +1022,11 @@ class Vapc:
             self.df["Eigenvalue_1"] * self.df["Eigenvalue_2"] * self.df["Eigenvalue_3"]
         ) ** (1 / 3)
         try:
-            self.df["Eigentropy"] = -1 * (
-                self.df["Eigenvalue_1"] * math.log(self.df["Eigenvalue_1"])
-                + self.df["Eigenvalue_2"] * math.log(self.df["Eigenvalue_2"])
-                + self.df["Eigenvalue_3"] * math.log(self.df["Eigenvalue_3"])
+            # Now compute entropy using the normalized probabilities
+            self.df["Eigentropy"] = - (
+                self.df["Eigenvalue_1_n"] * safe_log(self.df["Eigenvalue_1_n"])
+                + self.df["Eigenvalue_2_n"] * safe_log(self.df["Eigenvalue_2_n"])
+                + self.df["Eigenvalue_3_n"] * safe_log(self.df["Eigenvalue_3_n"])
             )
         except:
             self.df["Eigentropy"] = np.nan
