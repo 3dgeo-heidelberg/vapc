@@ -1030,6 +1030,7 @@ class Vapc:
             )
         except:
             self.df["Eigentropy"] = np.nan
+        df.drop(["Eigenvalue_1_n", "Eigenvalue_2_n","Eigenvalue_3_n"], axis=1)
         self.df["Anisotropy"] = (
             self.df["Eigenvalue_1"] - self.df["Eigenvalue_3"]
         ) / self.df["Eigenvalue_1"]
