@@ -686,7 +686,7 @@ class Vapc:
 
     @trace
     @timeit
-    def compute_point_count(self):
+    def compute_point_count_old(self):
         """
         Computes the point count for all occupied voxels.
 
@@ -700,6 +700,21 @@ class Vapc:
         self.df = self.df.merge(
             points_per_voxel, how="left", on=["voxel_x", "voxel_y", "voxel_z"]
         )
+        self.point_count = True
+        
+    def compute_point_count(self):
+        """
+        Computes the point count for all occupied voxels.
+
+        This method calculates the number of points within each voxel and adds a new column 'point_count' to `self.df`.
+        """
+        if self.voxelized is False:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+        group_keys = ["voxel_x", "voxel_y", "voxel_z"]
+        grouped = self.df.groupby(group_keys)
+        # Compute aggregates using transform so the result aligns with the original DataFrame.
+        self.df["point_count"] = grouped["X"].transform("size")
         self.point_count = True
 
     @trace
