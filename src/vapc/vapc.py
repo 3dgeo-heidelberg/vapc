@@ -917,7 +917,7 @@ class Vapc:
 
     @trace
     @timeit
-    def compute_covariance_matrix(self):
+    def compute_covariance_matrix_old(self):
         """
         Computes the covariance matrix for all occupied voxels.
 
@@ -953,7 +953,122 @@ class Vapc:
             covariance_df, how="left", on=["voxel_x", "voxel_y", "voxel_z"]
         )
         self.covariance_matrix = True
+    
+    @trace
+    @timeit
+    def compute_covariance_matrix(self):
+        """
+        Computes the covariance matrix for each voxel using groupby.transform,
+        avoiding an extra merge step.
 
+        For each voxel (grouped by voxel_x, voxel_y, voxel_z), the following aggregates are computed:
+            - n: number of points
+            - sum_x, sum_y, sum_z: sums of coordinates
+            - sum_x2, sum_y2, sum_z2: sums of squares
+            - sum_xy, sum_xz, sum_yz: sums of cross products
+
+        Then, using the formula:
+            cov(x, y) = (sum_xy - (sum_x * sum_y)/n) / (n - 1)
+        the covariance components are computed.
+        """
+        if not self.voxelized:
+            self.voxelize()
+
+        df = self.df
+
+        # Precompute extra columns
+        df["X2"] = df["X"] ** 2
+        df["Y2"] = df["Y"] ** 2
+        df["Z2"] = df["Z"] ** 2
+        df["XY"] = df["X"] * df["Y"]
+        df["XZ"] = df["X"] * df["Z"]
+        df["YZ"] = df["Y"] * df["Z"]
+
+        # Define the grouping keys
+        group_keys = ["voxel_x", "voxel_y", "voxel_z"]
+        grouped = df.groupby(group_keys)
+
+        # Compute aggregates using transform so the result aligns with the original DataFrame.
+        df["n"] = grouped["X"].transform("size")
+        df["sum_x"] = grouped["X"].transform("sum")
+        df["sum_y"] = grouped["Y"].transform("sum")
+        df["sum_z"] = grouped["Z"].transform("sum")
+        df["sum_x2"] = grouped["X2"].transform("sum")
+        df["sum_y2"] = grouped["Y2"].transform("sum")
+        df["sum_z2"] = grouped["Z2"].transform("sum")
+        df["sum_xy"] = grouped["XY"].transform("sum")
+        df["sum_xz"] = grouped["XZ"].transform("sum")
+        df["sum_yz"] = grouped["YZ"].transform("sum")
+
+        n = df["n"]
+
+        # Compute covariance components.
+        # For groups with n == 1, we set the covariance to NaN.
+        df["cov_xx"] = np.where(
+            n > 1,
+            (df["sum_x2"] - (df["sum_x"] ** 2) / n) / (n - 1),
+            np.nan
+        )
+        df["cov_yy"] = np.where(
+            n > 1,
+            (df["sum_y2"] - (df["sum_y"] ** 2) / n) / (n - 1),
+            np.nan
+        )
+        df["cov_zz"] = np.where(
+            n > 1,
+            (df["sum_z2"] - (df["sum_z"] ** 2) / n) / (n - 1),
+            np.nan
+        )
+        df["cov_xy"] = np.where(
+            n > 1,
+            (df["sum_xy"] - (df["sum_x"] * df["sum_y"]) / n) / (n - 1),
+            np.nan
+        )
+        df["cov_xz"] = np.where(
+            n > 1,
+            (df["sum_xz"] - (df["sum_x"] * df["sum_z"]) / n) / (n - 1),
+            np.nan
+        )
+        df["cov_yz"] = np.where(
+            n > 1,
+            (df["sum_yz"] - (df["sum_y"] * df["sum_z"]) / n) / (n - 1),
+            np.nan
+        )
+
+        # Since the covariance matrix is symmetric, we assign the mirrored values:
+        df["cov_yx"] = df["cov_xy"]
+        df["cov_zx"] = df["cov_xz"]
+        df["cov_zy"] = df["cov_yz"]
+
+        # Optionally, drop temporary columns if you no longer need them.
+        df.drop(
+            columns=[
+                "X2", "Y2", "Z2", "XY", "XZ", "YZ",
+                "n", "sum_x", "sum_y", "sum_z",
+                "sum_x2", "sum_y2", "sum_z2",
+                "sum_xy", "sum_xz", "sum_yz"
+            ],
+            inplace=True
+        )
+
+        col_names = [
+                    "cov_xx",
+                    "cov_xy",
+                    "cov_xz",
+                    "cov_yx",
+                    "cov_yy",
+                    "cov_yz",
+                    "cov_zx",
+                    "cov_zy",
+                    "cov_zz",
+                ]
+        # Reorder the DataFrame
+        other_cols = [col for col in df.columns if col not in col_names]
+        new_order = col_names + other_cols
+        df = df[new_order]  
+        self.df = df
+        self.covariance_matrix_computed = True
+        
     @trace
     @timeit
     def compute_eigenvalues(self):
