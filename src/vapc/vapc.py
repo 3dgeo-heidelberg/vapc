@@ -914,45 +914,6 @@ class Vapc:
             self.df[["voxel_x", "voxel_y", "voxel_z"]] * self.voxel_size
         ) + self.origin
         self.corner_of_voxel = True
-
-    @trace
-    @timeit
-    def compute_covariance_matrix_old(self):
-        """
-        Computes the covariance matrix for all occupied voxels.
-
-        Notes
-        -----
-        - Adds covariance matrix components ('cov_xx', 'cov_xy', ..., 'cov_zz') to `self.df`.
-        """
-
-        def _covariance(df):
-            cov_matrix = df[["X", "Y", "Z"]].cov()
-            return cov_matrix.values.flatten()
-
-        if self.voxelized is False:
-            self.voxelize()
-            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"])
-        cov_df = grouped.apply(_covariance)
-        col_names = [
-            "cov_xx",
-            "cov_xy",
-            "cov_xz",
-            "cov_yx",
-            "cov_yy",
-            "cov_yz",
-            "cov_zx",
-            "cov_zy",
-            "cov_zz",
-        ]
-        covariance_df = pd.DataFrame(
-            cov_df.values.tolist(), index=cov_df.index, columns=col_names
-        ).reset_index()
-        self.df = self.df.merge(
-            covariance_df, how="left", on=["voxel_x", "voxel_y", "voxel_z"]
-        )
-        self.covariance_matrix = True
     
     @trace
     @timeit
@@ -1071,7 +1032,7 @@ class Vapc:
         
     @trace
     @timeit
-    def compute_eigenvalues(self):
+    def compute_eigenvalues(self):            #TODO: Change compute_eigenvalues to compute_eigenvalues_and_vectors in a similar way to the new implementation of compute_covariance_matrix
         """
         Computes eigenvalues for all occupied voxels.
 
