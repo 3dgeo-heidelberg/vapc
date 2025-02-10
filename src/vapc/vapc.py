@@ -713,7 +713,6 @@ class Vapc:
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
         group_keys = ["voxel_x", "voxel_y", "voxel_z"]
         grouped = self.df.groupby(group_keys)
-        # Compute aggregates using transform so the result aligns with the original DataFrame.
         self.df["point_count"] = grouped["X"].transform("size")
         self.point_count = True
 
