@@ -509,15 +509,24 @@ class Vapc:
         -----
         - Adds a new column 'voxel_index' to `self.df`.
         """
+        print("\n\n")
+        import time
+        s = time.time()
         if not self.voxelized:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
         if self.voxel_index:
             return
-        self.df["voxel_index"] = list(
-            zip(self.df["voxel_x"], self.df["voxel_y"], self.df["voxel_z"])
-        )
+        #self.df["voxel_index"] = list(
+        #    zip(self.df["voxel_x"], self.df["voxel_y"], self.df["voxel_z"])
+        #)
+
+        self.df.set_index(["voxel_x", "voxel_y", "voxel_z"], inplace=True)
+
         self.voxel_index = True
+        e = time.time()
+        print(f"##### compute_voxel_index executed in {e-s:.2f} seconds")
+        print("\n\n")
 
     @trace
     @timeit
@@ -638,25 +647,26 @@ class Vapc:
                 )
 
         # mask by attribute
+        #mask_values = set(vapc_mask.df[mask_attribute])
+        mask_values = vapc_mask.df.index
         if segment_in_or_out == "in":
-            mask_values = set(vapc_mask.df[mask_attribute])
-            self.df = self.df[self.df[mask_attribute].isin(mask_values)].reset_index(
-                drop=True
-            )
+            self.df = self.df[self.df.index.isin(mask_values)].reset_index(drop=True)
+            #self.df = self.df[self.df[mask_attribute].isin(mask_values)].reset_index(drop=True)
         elif segment_in_or_out == "out":
-            mask_values = set(vapc_mask.df[mask_attribute])
-            self.df = self.df[~self.df[mask_attribute].isin(mask_values)].reset_index(
-                drop=True
-            )
+            self.df = self.df[~self.df.index.isin(mask_values)].reset_index(drop=True)
+            #self.df = self.df[~self.df[mask_attribute].isin(mask_values)].reset_index(drop=True)
         else:
             raise ValueError(
                 "Parameter 'segment_in_or_out' must be either 'in' or 'out'."
             )
 
         # print("Points after filtering:",self.df.shape)
-        self.df = self.df.drop(
-            ["voxel_x", "voxel_y", "voxel_z", mask_attribute], axis=1
-        )
+        for attr in ["voxel_x", "voxel_y", "voxel_z", mask_attribute]:
+            try:
+                self.df = self.df.drop([attr], axis=1)
+            except:
+                pass
+
         self.voxelized = False
 
     @trace
@@ -763,7 +773,7 @@ class Vapc:
             z_max - z_min + 1,
         )
         nr_of_voxels_within_bounding_box = x_extent * y_extent * z_extent
-        nr_of_occupied_voxels = len(np.unique(self.df["voxel_index"]))
+        nr_of_occupied_voxels = self.df.indef.unique() #len(np.unique(self.df["voxel_index"]))
         self.percentage_occupied = round(
             nr_of_occupied_voxels / nr_of_voxels_within_bounding_box * 100, 2
         )
