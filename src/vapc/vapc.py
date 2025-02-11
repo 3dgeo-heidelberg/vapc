@@ -512,7 +512,8 @@ class Vapc:
         if not self.voxelized:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-
+        if self.voxel_index:
+            return
         self.df["voxel_index"] = list(
             zip(self.df["voxel_x"], self.df["voxel_y"], self.df["voxel_z"])
         )
