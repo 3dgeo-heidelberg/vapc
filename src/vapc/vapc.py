@@ -338,7 +338,11 @@ class Vapc:
             - Updates `self.df` by merging the computed statistics.
             - Sets `self.attributes_per_voxel` to True.
         """
-        # import time
+        
+        #Check if any attributes are specified
+        if self.attributes == {}:
+            print("No attributes specified for computation. Skipping.")
+            return
 
         # Ensure data is voxelized
         if not self.voxelized:
