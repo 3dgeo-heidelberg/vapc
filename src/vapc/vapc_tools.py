@@ -88,10 +88,11 @@ def mask(vapc_pc, maskfile, segment_in_or_out, buffer_size, reduce_to=False):
     vapc_mask.compute_offset()
     # Buffer mask voxelized point cloud
     vapc_mask.compute_voxel_buffer(buffer_size=int(buffer_size))
+    vapc_mask.voxel_index = False
     vapc_mask.df = vapc_mask.buffer_df
     # Select by mask
     vapc_pc.select_by_mask(
-        vapc_mask, mask_attribute="voxel_index", segment_in_or_out=segment_in_or_out
+        vapc_mask, segment_in_or_out=segment_in_or_out
     )
     # Undo offset
     vapc_pc.compute_offset()
@@ -408,8 +409,13 @@ def use_tool(tool_name, infile, outfile, voxel_size, args, reduce_to):
         )
     else:
         raise ValueError(f"unknown tool '{tool_name}'")
-    dh.save_as_las(outfile)
-
+    if outfile.endswith(".las") or outfile.endswith(".las"):
+        dh.save_as_las(outfile)
+    elif outfile.endswith(".ply"):
+        print("PLY")
+        dh.save_as_ply(outfile, voxel_size, shift_to_center=False)
+    else:
+        return "Unknown output format"
 
 def lasz_to_ply(infile, outfile, voxel_size, shift_to_center=False):
     """

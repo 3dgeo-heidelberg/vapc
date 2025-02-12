@@ -6,8 +6,6 @@
       "tool": "compute",
       "args": {
         "compute": [
-          "big_int_index",
-          "hash_index",
           "point_density",
           "point_count",
           "percentage_occupied",

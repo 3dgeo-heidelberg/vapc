@@ -3,7 +3,7 @@ import pytest
 import laspy
 import plyfile
 import vapc
-
+import shutil #Remove later
 
 @pytest.fixture
 def test_file():
@@ -50,6 +50,8 @@ def get_expected_las_fields(vapc_command):
         List of expected fields in the output las file
     """
     attributes = vapc_command["args"]["compute"]
+    if "voxel_index" in attributes:
+        attributes.remove("voxel_index")
     if "center_of_gravity" in attributes:
         attributes.remove("center_of_gravity")
         attributes += ["cog_x", "cog_y", "cog_z"]
@@ -186,9 +188,7 @@ def test_do_vapc_on_files_invalid_computation(test_file, tmp_path):
                              [0.5, {"tool": "compute", "args": {"compute": ["eigenvalues", "geometric_features"]}}],
                              [0.5, {"tool": "compute", 
                                     "args": {"compute": 
-                                             ["big_int_index",
-                                              "hash_index",
-                                              "voxel_index",
+                                             ["voxel_index",
                                               "center_of_gravity",
                                               "std_of_cog",
                                               "center_of_voxel",
@@ -251,7 +251,7 @@ def test_do_vapc_on_files_defaults(list_of_test_files, tmp_path, vapc_command_co
                          [
                              [1.0, {"tool": "compute",
                                     "args": {"compute":
-                                             ["big_int_index",
+                                             ["voxel_index",
                                               "center_of_gravity",
                                               ]}},
                                               20,
@@ -259,7 +259,7 @@ def test_do_vapc_on_files_defaults(list_of_test_files, tmp_path, vapc_command_co
                                               ".las"],
                              [1.0, {"tool": "compute",
                                     "args": {"compute":
-                                             ["big_int_index",
+                                             ["voxel_index",
                                               "center_of_gravity",
                                               ]}},
                                               20,
@@ -292,6 +292,10 @@ def test_do_vapc_on_one_file(test_file_2, tmp_path, voxel_size, vapc_command, ti
                 assert las.points[attr] is not None
     elif save_as == ".ply":
         plydata = plyfile.PlyData.read(outfile)
-        properties = [p.name for p in plydata.elements[0].properties]
-        assert len(properties) == 22
+        #List of properties we can ignore
+        properties_to_ignore = ['x', 'y', 'z', 'intensity', 'bit_fields', 'classification_flags', 'classification', 'user_data', 'scan_angle', 'point_source_id', 'gps_time', 'red', 'green', 'blue', 'echo_width', 'fullwaveIndex', 'hitObjectId', 'heliosAmplitude']
+        properties = [p.name for p in plydata.elements[0].properties if p.name not in properties_to_ignore]
+        print(properties)
+        print(attributes)
+        assert len(properties) == 3
         assert set(attributes) <= set(properties)

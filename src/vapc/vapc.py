@@ -8,8 +8,6 @@ from .utilities import trace, timeit, compute_mode_continuous
 class Vapc:
     # TODO: @Ronny: Why AVAILABE_COMPUTATIONS as class attribute and as instance attribute?
     AVAILABLE_COMPUTATIONS = [
-        "big_int_index",
-        "hash_index",
         "voxel_index",
         "point_count",
         "point_density",
@@ -71,8 +69,6 @@ class Vapc:
             raise ValueError("origin must be a list of three coordinates [x, y, z].")
 
         self.AVAILABLE_COMPUTATIONS = [
-            "big_int_index",
-            "hash_index",
             "voxel_index",
             "point_count",
             "point_density",
@@ -93,8 +89,6 @@ class Vapc:
         # Calculations not applied yet:
         self.attributes_up_to_data = False
         self.voxelized = False
-        self.big_int_index = False
-        self.hash_index = False
         self.voxel_index = False
         self.point_count = False
         self.point_density = False
@@ -222,8 +216,6 @@ class Vapc:
         the corresponding methods to compute various attributes of the voxel data.
 
         The available computations are:
-            - "big_int_index"
-            - "hash_index"
             - "voxel_index"
             - "point_count"
             - "point_density"
@@ -471,34 +463,6 @@ class Vapc:
 
         self.attributes_per_voxel = True
 
-
-    @trace
-    @timeit
-    def compute_big_int_index(self, n=1000000000):
-        """
-        Computes a big int index for all occupied voxels (as a int).
-        Do not set n > 1000000000, errors will occur.
-
-        Parameters
-        ----------
-        n : int, optional
-            The base multiplier for voxel indexing. Defaults to 1000000000.
-
-        Notes
-        -----
-        - Adds a new column 'big_int_index' to `self.df`.
-        """
-        if self.voxelized is False:
-            self.voxelize()
-            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-
-        self.df.loc[:, "big_int_index"] = (
-            self.df.loc[:, "voxel_x"] * n**2
-            + self.df.loc[:, "voxel_y"] * n
-            + self.df.loc[:, "voxel_z"]
-        )
-        self.big_int_index = True
-
     @trace
     @timeit
     def compute_voxel_index(self):
@@ -509,24 +473,14 @@ class Vapc:
         -----
         - Adds a new column 'voxel_index' to `self.df`.
         """
-        print("\n\n")
-        import time
-        s = time.time()
+        if self.voxel_index:
+            return
         if not self.voxelized:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        if self.voxel_index:
-            return
-        #self.df["voxel_index"] = list(
-        #    zip(self.df["voxel_x"], self.df["voxel_y"], self.df["voxel_z"])
-        #)
-
-        self.df.set_index(["voxel_x", "voxel_y", "voxel_z"], inplace=True)
-
+        self.df.set_index(["voxel_x", "voxel_y", "voxel_z"], inplace=True,drop = False)
+        self.df.index.set_names(["idx_voxel_x", "idx_voxel_y", "idx_voxel_z"], inplace=True)
         self.voxel_index = True
-        e = time.time()
-        print(f"##### compute_voxel_index executed in {e-s:.2f} seconds")
-        print("\n\n")
 
     @trace
     @timeit
@@ -557,10 +511,11 @@ class Vapc:
         if not self.voxelized:
             self.voxelize()
 
-        required_columns = ["voxel_x", "voxel_y", "voxel_z"]
-        coords = (
-            self.df[required_columns].drop_duplicates().values
-        )  # Avoid duplicate voxels
+        if not self.voxel_index:
+            self.compute_voxel_index()
+
+        # Get unique voxel coordinates
+        coords = np.array(self.df.index.unique().tolist())
 
         # Generate offset combinations
         offsets = np.arange(-buffer_size, buffer_size + 1)
@@ -577,9 +532,7 @@ class Vapc:
         )  # Flatten to (num_voxels * num_offsets, 3)
 
         # Remove duplicate coordinates
-        result_df = pd.DataFrame(result, columns=required_columns).drop_duplicates()
-
-        # Optionally, remove coordinates outside the original data bounds if necessary
+        result_df = pd.DataFrame(result, columns=["voxel_x", "voxel_y", "voxel_z"]).drop_duplicates()
 
         # Store the buffer coordinates in a new attribute
         self.buffer_df = result_df.reset_index(drop=True)
@@ -587,7 +540,7 @@ class Vapc:
     @trace
     @timeit
     def select_by_mask(
-        self, vapc_mask, mask_attribute="voxel_index", segment_in_or_out="in"
+        self, vapc_mask, segment_in_or_out="in"
     ):
         """
         Filters the data points based on a mask provided by another Vapc instance.
@@ -629,79 +582,32 @@ class Vapc:
         if vapc_mask.voxelized is False:
             vapc_mask.voxelize()
 
-        if mask_attribute not in self.df.columns:
-            # Attempt to compute the attribute
-            if hasattr(self, f"compute_{mask_attribute}"):
-                getattr(self, f"compute_{mask_attribute}")()
-            else:
-                raise AttributeError(
-                    f"Attribute '{mask_attribute}' not found and cannot be computed."
-                )
+        if vapc_mask.voxel_index is False:
+            vapc_mask.compute_voxel_index()
 
-        if mask_attribute not in vapc_mask.df.columns:
-            if hasattr(vapc_mask, f"compute_{mask_attribute}"):
-                getattr(vapc_mask, f"compute_{mask_attribute}")()
-            else:
-                raise AttributeError(
-                    f"Attribute '{mask_attribute}' not found in `vapc_mask` and cannot be computed."
-                )
+        if self.voxel_index is False:
+            self.compute_voxel_index()
 
-        # mask by attribute
-        #mask_values = set(vapc_mask.df[mask_attribute])
         mask_values = vapc_mask.df.index
         if segment_in_or_out == "in":
-            self.df = self.df[self.df.index.isin(mask_values)].reset_index(drop=True)
-            #self.df = self.df[self.df[mask_attribute].isin(mask_values)].reset_index(drop=True)
+            self.df = self.df.loc[self.df.index.isin(mask_values)]
         elif segment_in_or_out == "out":
-            self.df = self.df[~self.df.index.isin(mask_values)].reset_index(drop=True)
-            #self.df = self.df[~self.df[mask_attribute].isin(mask_values)].reset_index(drop=True)
+            self.df = self.df.loc[~self.df.index.isin(mask_values)]
         else:
             raise ValueError(
                 "Parameter 'segment_in_or_out' must be either 'in' or 'out'."
             )
 
-        # print("Points after filtering:",self.df.shape)
-        for attr in ["voxel_x", "voxel_y", "voxel_z", mask_attribute]:
+        for attr in ["voxel_x", "voxel_y", "voxel_z"]:
             try:
                 self.df = self.df.drop([attr], axis=1)
             except:
                 pass
-
         self.voxelized = False
 
     @trace
     @timeit
-    def compute_hash_index(
-        self, p1=76690892503, p2=15752609759, p3=27174879103, n=2**10
-    ):
-        """
-        Computes the hash index for all occupied voxels.
-
-        Parameters
-        ----------
-        p1, p2, p3 : int, optional
-            Large prime numbers used in the hashing function.
-        n : int, optional
-            Modulus for the hashing function. Defaults to 2**10.
-
-        Notes
-        -----
-        - This method adds a new column 'hash_index' to `self.df`.
-        - Be cautious with the size of `n` and the prime numbers to avoid integer overflows.
-        """
-        if self.voxelized is False:
-            self.voxelize()
-            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        self.df["hash_index"] = (
-            (self.df["voxel_x"] * p1)
-            ^ (self.df["voxel_y"] * p2)
-            ^ (self.df["voxel_z"] * p3)
-        ) % n
-        self.hash_index = True
-
-    @trace
-    @timeit
-    def compute_point_count_old(self):
+    def compute_point_count_old2(self):
         """
         Computes the point count for all occupied voxels.
 
@@ -717,7 +623,9 @@ class Vapc:
         )
         self.point_count = True
         
-    def compute_point_count(self):
+    @trace
+    @timeit
+    def compute_point_count_old1(self):
         """
         Computes the point count for all occupied voxels.
 
@@ -728,6 +636,21 @@ class Vapc:
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
         group_keys = ["voxel_x", "voxel_y", "voxel_z"]
         grouped = self.df.groupby(group_keys)
+        self.df["point_count"] = grouped["X"].transform("size")
+        self.point_count = True
+
+    @trace
+    @timeit
+    def compute_point_count(self):
+        """
+        Computes the point count for all occupied voxels.
+
+        This method calculates the number of points within each voxel and adds a new column 'point_count' to `self.df`.
+        """
+        if self.voxel_index is False:
+            self.compute_voxel_index()
+            
+        grouped = self.df.groupby(level=self.df.index.names)
         self.df["point_count"] = grouped["X"].transform("size")
         self.point_count = True
 
@@ -773,7 +696,7 @@ class Vapc:
             z_max - z_min + 1,
         )
         nr_of_voxels_within_bounding_box = x_extent * y_extent * z_extent
-        nr_of_occupied_voxels = self.df.indef.unique() #len(np.unique(self.df["voxel_index"]))
+        nr_of_occupied_voxels = len(self.df.index.unique()) #len(np.unique(self.df["voxel_index"]))
         self.percentage_occupied = round(
             nr_of_occupied_voxels / nr_of_voxels_within_bounding_box * 100, 2
         )
