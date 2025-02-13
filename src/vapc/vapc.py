@@ -478,6 +478,8 @@ class Vapc:
         if not self.voxelized:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+        print("doing it now...")
+        # self.df.set_index(["voxel_x", "voxel_y", "voxel_z"], inplace=True)
         self.df.set_index(["voxel_x", "voxel_y", "voxel_z"], inplace=True,drop = False)
         self.df.index.set_names(["idx_voxel_x", "idx_voxel_y", "idx_voxel_z"], inplace=True)
         self.voxel_index = True
@@ -647,10 +649,10 @@ class Vapc:
 
         This method calculates the number of points within each voxel and adds a new column 'point_count' to `self.df`.
         """
-        if self.voxel_index is False:
-            self.compute_voxel_index()
+        if self.voxelized is False:
+            self.voxelize()
             
-        grouped = self.df.groupby(level=self.df.index.names)
+        grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"])
         self.df["point_count"] = grouped["X"].transform("size")
         self.point_count = True
 
