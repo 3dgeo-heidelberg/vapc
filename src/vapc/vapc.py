@@ -685,8 +685,8 @@ class Vapc:
         """
         if self.voxel_index is False:
             self.compute_voxel_index()
-            if "voxel_index" not in self.compute:
-                self.drop_columns += ["voxel_index"]
+            # if "voxel_index" not in self.compute:
+            #     self.drop_columns += ["voxel_index"]
         x_min, x_max = self.df["voxel_x"].min(), self.df["voxel_x"].max()
         y_min, y_max = self.df["voxel_y"].min(), self.df["voxel_y"].max()
         z_min, z_max = self.df["voxel_z"].min(), self.df["voxel_z"].max()
