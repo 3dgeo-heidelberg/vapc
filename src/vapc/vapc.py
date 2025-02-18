@@ -478,8 +478,6 @@ class Vapc:
         if not self.voxelized:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        print("doing it now...")
-        # self.df.set_index(["voxel_x", "voxel_y", "voxel_z"], inplace=True)
         self.df.set_index(["voxel_x", "voxel_y", "voxel_z"], inplace=True,drop = False)
         self.df.index.set_names(["idx_voxel_x", "idx_voxel_y", "idx_voxel_z"], inplace=True)
         self.voxel_index = True
