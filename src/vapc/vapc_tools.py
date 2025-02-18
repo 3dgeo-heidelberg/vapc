@@ -472,7 +472,7 @@ def point_cloud_to_vapc(point_cloud_file,
         vp.df = dh.df
         return vp
 
-def select_mesh_by_mask(dh_scene,vp_scene,outfile,strict=True):
+def select_mesh_by_mask(dh_scene,vp_scene,outfile,strict=True): #TODO: Add notebook example
     """
     Selects and saves a mesh based on a vertex mask.
 
@@ -514,7 +514,7 @@ def select_mesh_by_mask(dh_scene,vp_scene,outfile,strict=True):
     # Save the segmented OBJ mesh.
     dh_scene.save_obj_mesh(outfile)
 
-def extract_point_cloud_by_3D_mask(scene_file, mask_file, outfile, voxel_size = 1, segment_mode='in', mode = "p", skiprows = 2):
+def extract_point_cloud_by_3D_mask(scene_file, mask_file, outfile, voxel_size = 1, segment_mode='in', mode = "p", skiprows = 2): #TODO: Add notebook example
     """
     Extracts a point cloud from a scene file using a 3D mask and saves the result to an output file.
 
@@ -548,7 +548,7 @@ def extract_point_cloud_by_3D_mask(scene_file, mask_file, outfile, voxel_size = 
     dh_scene.df = vp_scene.df
     dh_scene.save_as_las(outfile)
                    
-def extract_mesh_by_3D_mask(scene_file, mask_file, outfile, skiprows = 2, skiprows_mask = 2, voxel_size = 1, mode = "m", segment_mode='in', strict=True):
+def extract_mesh_by_3D_mask(scene_file, mask_file, outfile, skiprows = 2, skiprows_mask = 2, voxel_size = 1, mode = "m", segment_mode='in', strict=True): #TODO: Add notebook example
     """
     Extracts a mesh from a 3D scene file using a 3D mask and saves the result to an output file.
 
