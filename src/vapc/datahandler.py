@@ -258,6 +258,9 @@ class DataHandler:
         self.voxel_size = voxel_size
         self._validate_is_voxelized()
 
+        for enum, scalar in enumerate(self.df.columns.values):
+            self.df.columns.values[enum] = scalar.replace(" ", "_")
+
         # Adjust color values if necessary
         if (
             "red" in self.df.columns
