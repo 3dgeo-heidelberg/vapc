@@ -420,10 +420,10 @@ class DataHandler:
             print('Only one file can be read at a time')
             return
         df = pd.read_csv(self.files[0], sep=' ', header=None, names=['prefix','x', 'y', 'z'], skiprows=skiprows)
-        v_df   = df[df['prefix'] == 'v'].reset_index(drop=True)
-        vn_df  = df[df['prefix'] == 'vn'].reset_index(drop=True)
-        f_df   = df[df['prefix'] == 'f'].reset_index(drop=True)
-
+        df = df[df['prefix'].isin(['v','vn','f'])]
+        v_df  = df[df['prefix'] == 'v'].reset_index(drop=True)
+        vn_df = df[df['prefix'] == 'vn'].reset_index(drop=True)
+        f_df  = df[df['prefix'] == 'f'].reset_index(drop=True)
         v_df['vertex_id'] = v_df.index + 1
         vn_df['normal_id'] = vn_df.index + 1
 
@@ -480,6 +480,10 @@ class DataHandler:
         self.face_df = face
         #Make input suitable for vapc
         self.vertex_df = v_df.rename(columns={'x': 'X', 'y': 'Y', 'z': 'Z'})
+        
+        self.vertex_df["X"] = self.vertex_df["X"].astype(float)
+        self.vertex_df["Y"] = self.vertex_df["Y"].astype(float)
+        self.vertex_df["Z"] = self.vertex_df["Z"].astype(float)
         #remove prefix as it is clear from the name
         self.vertex_df = self.vertex_df.drop(columns=['prefix'])
 
@@ -499,6 +503,10 @@ class DataHandler:
         outfile: String path for the new OBJ file to be written.
         """
         face_df = self.face_df
+        #If face df is empty, we can not save anything
+        if face_df.shape[0] == 0:
+            print("No faces to save")
+            return
         # --- Extract Vertex Data ---
         # Rename columns for each face vertex group to a common format
         v1 = face_df[['v1_x', 'v1_y', 'v1_z']].rename(columns={'v1_x':'x', 'v1_y':'y', 'v1_z':'z'})
