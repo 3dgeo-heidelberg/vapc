@@ -420,6 +420,8 @@ class Vapc:
                             raise ValueError(
                                 f"Cannot compute 'mode_count' for continuous attribute '{attr}'"
                             ) from exc
+                    
+                        counts = counts[counts!=0]
                         proportions = counts / counts_sum
                         count_above_threshold = np.sum(proportions >= percentage)
                         value = count_above_threshold
