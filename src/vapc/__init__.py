@@ -1,4 +1,5 @@
 from vapc.vapc import Vapc
+from vapc.bi_vapc import BiTemporalVapc
 from vapc.datahandler import DataHandler
 from vapc.utilities import *
 from vapc.vapc_tools import use_tool

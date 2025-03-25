@@ -583,3 +583,34 @@ def extract_mesh_by_3D_mask(scene_file, mask_file, outfile, skiprows = 2, skipro
     vp_scene.select_by_mask(vp_mask,segment_in_or_out=segment_mode)
     select_mesh_by_mask(dh_scene,vp_scene,outfile,strict=strict)
     return True                          
+
+
+def extract_areas_with_change_using_mahalanobis_distance(point_cloud_1_path, point_cloud_2_path, mask_file, point_cloud_out_1_path, point_cloud_out_2_path, voxel_size, alpha_value, delete_mask_file=True):
+    #Open point clouds
+    vapc_1 = point_cloud_to_vapc(point_cloud_file=point_cloud_1_path,
+                            voxel_size=voxel_size)
+    vapc_2 = point_cloud_to_vapc(point_cloud_file=point_cloud_2_path,
+                            voxel_size=voxel_size)
+
+    # Initiate Bi-temporal VAPC
+    bi_vapc = vapc.BiTemporalVapc([vapc_1, vapc_2])
+    bi_vapc.prepare_data_for_mahalanobis_distance() #prepare data for mahalanobis distance
+    bi_vapc.merge_vapcs_with_same_voxel_index() #defines how comparison is done. Here, it is done per same voxel index.
+    # bi_vapc.compute_distance() #euclidean distance -> optional
+    bi_vapc.compute_mahalanobis_distance(alpha=alpha_value) #alpha value for chi2
+    bi_vapc.compute_voxels_occupied_in_single_epoch() #Also get disappearing and appearing voxels
+
+    # Prepare data for export
+    bi_vapc.prepare_data_for_export()
+    # As we only want areas where change might have happened areas where the change 
+    # type is 1 (mahalanobis significant), 2 (less than 30 points in voxel), 3 (disappearing), 
+    # and 4 (appearing) are kept.
+    bi_vapc.df = bi_vapc.df[(bi_vapc.df["change_type"] >= 1)]
+    bi_vapc.save_to_las(mask_file)
+
+    # Clip area from T1 and T2
+    extract_point_cloud_by_3D_mask(point_cloud_1_path, mask_file, point_cloud_out_1_path, voxel_size)
+    extract_point_cloud_by_3D_mask(point_cloud_2_path, mask_file, point_cloud_out_2_path, voxel_size)
+
+    if delete_mask_file:
+        os.remove(mask_file)
