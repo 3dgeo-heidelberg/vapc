@@ -607,6 +607,74 @@ class Vapc:
                 pass
         self.voxelized = False
 
+    
+    @trace
+    @timeit
+    def label_by_mask(
+        self, vapc_mask, label_attributes=["voxel_x", "voxel_y", "voxel_z"]):
+        """
+        Labels the data points based on a mask provided by another Vapc instance.
+
+        This method either keeps or removes points that overlap with the mask, depending on the
+        `segment_in_or_out` parameter.
+
+        Parameters
+        ----------
+        vapc_mask : Vapc
+            Another instance of the Vapc class that provides the mask for filtering.
+        mask_attribute : str, optional
+            The attribute used for masking. Defaults to "voxel_index".
+        segment_in_or_out : str, optional
+            Determines whether to keep ("in") or remove ("out") the overlapping points.
+            Must be either "in" or "out". Defaults to "in".
+
+        Raises
+        ------
+        ValueError
+            If `segment_in_or_out` is not "in" or "out".
+        AttributeError
+            If required attributes or data are missing.
+
+        Notes
+        -----
+        - The method modifies `self.df` in-place by filtering data points.
+        - Resets `self.voxelized` to False after filtering.
+        - Removes voxel columns and `mask_attribute` from `self.df` after filtering.
+        """
+
+        if self.df is None or vapc_mask.df is None:
+            raise AttributeError("Both `self.df` and `vapc_mask.df` must exist.")
+
+        if self.voxelized is False:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+
+        if vapc_mask.voxelized is False:
+            vapc_mask.voxelize()
+
+        if vapc_mask.voxel_index is False:
+            vapc_mask.compute_voxel_index()
+
+        if self.voxel_index is False:
+            self.compute_voxel_index()
+           
+
+        # Create a list of labels that exist in vapc_mask.df.columns
+        common_cols = [label for label in label_attributes if label in vapc_mask.df.columns]
+
+        # Join only those columns into self.df based on matching index values.
+        # You can change 'how' to 'inner' if you only want rows with a match in vapc_mask.df.
+        if common_cols:
+            self.df = self.df.join(vapc_mask.df[common_cols], how='left')
+
+
+        for attr in ["voxel_x", "voxel_y", "voxel_z"]:
+            try:
+                self.df = self.df.drop([attr], axis=1)
+            except:
+                pass
+        self.voxelized = False
+
     @trace
     @timeit
     def compute_point_count_old2(self):

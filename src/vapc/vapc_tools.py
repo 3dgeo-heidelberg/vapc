@@ -1,6 +1,7 @@
 from .vapc import Vapc
 from .datahandler import DataHandler
-
+from .bi_vapc import BiTemporalVapc
+import os
 
 def initiate_vapc(lazfile, voxel_size, origin=None):
     """
@@ -585,6 +586,42 @@ def extract_mesh_by_3D_mask(scene_file, mask_file, outfile, skiprows = 2, skipro
     return True                          
 
 
+def extract_point_cloud_by_3D_mask_and_label(scene_file, mask_file, outfile, voxel_size = 1, segment_mode='in', mode = "p", skiprows = 2): #TODO: Add notebook example
+    """
+    Extracts a point cloud from a scene file using a 3D mask and saves the result to an output file. Add label to the extracted point cloud based on the mask.
+
+    Parameters:
+    scene_file (str): Path to the input scene file containing the point cloud data.
+    mask_file (str): Path to the mask file used to filter the point cloud.
+    outfile (str): Path to the output file where the filtered point cloud will be saved.
+    voxel_size (int, optional): Size of the voxel grid used for processing. Default is 1.
+    segment_mode (str, optional): Mode for segmenting the point cloud. Can be 'in' or 'out'. Default is 'in'.
+    mode (str, optional): Mode for processing the mask file. 'm' for mesh vertices, 'p' for point cloud. Default is 'p'.
+    skiprows (int, optional): Number of rows to skip when reading the mask file. Default is 2.
+
+    Raises:
+    ValueError: If the mode is not 'm' or 'p'.
+
+    Returns:
+    None
+    """
+    dh_scene = DataHandler(scene_file)
+    dh_scene.load_las_files()
+    if mode == "m":
+        vp_mask = mesh_vertices_to_vapc(mask_file,skip_rows = skiprows, voxel_size = voxel_size)
+    elif mode == "p":
+        vp_mask = point_cloud_to_vapc(mask_file, voxel_size = voxel_size)
+    else:   
+        raise ValueError("mode must be either 'm' or 'p', seperated by '_'")
+    vp_scene = Vapc(voxel_size)
+    vp_scene.df = dh_scene.df
+    # Use vapc select_by_mask method to select vertices inside the mask.
+    vp_scene.select_by_mask(vp_mask,segment_in_or_out=segment_mode)
+    vp_scene.label_by_mask(vp_mask,["mahalanobi_significance", "p_value","change_type"])
+    dh_scene.df = vp_scene.df
+    dh_scene.save_as_las(outfile)
+
+
 def extract_areas_with_change_using_mahalanobis_distance(point_cloud_1_path, point_cloud_2_path, mask_file, point_cloud_out_1_path, point_cloud_out_2_path, voxel_size, alpha_value, delete_mask_file=True):
     #Open point clouds
     vapc_1 = point_cloud_to_vapc(point_cloud_file=point_cloud_1_path,
@@ -593,7 +630,7 @@ def extract_areas_with_change_using_mahalanobis_distance(point_cloud_1_path, poi
                             voxel_size=voxel_size)
 
     # Initiate Bi-temporal VAPC
-    bi_vapc = vapc.BiTemporalVapc([vapc_1, vapc_2])
+    bi_vapc = BiTemporalVapc([vapc_1, vapc_2])
     bi_vapc.prepare_data_for_mahalanobis_distance() #prepare data for mahalanobis distance
     bi_vapc.merge_vapcs_with_same_voxel_index() #defines how comparison is done. Here, it is done per same voxel index.
     # bi_vapc.compute_distance() #euclidean distance -> optional
@@ -609,8 +646,11 @@ def extract_areas_with_change_using_mahalanobis_distance(point_cloud_1_path, poi
     bi_vapc.save_to_las(mask_file)
 
     # Clip area from T1 and T2
-    extract_point_cloud_by_3D_mask(point_cloud_1_path, mask_file, point_cloud_out_1_path, voxel_size)
-    extract_point_cloud_by_3D_mask(point_cloud_2_path, mask_file, point_cloud_out_2_path, voxel_size)
+    extract_point_cloud_by_3D_mask_and_label(point_cloud_1_path, mask_file, point_cloud_out_1_path, voxel_size)
+    extract_point_cloud_by_3D_mask_and_label(point_cloud_2_path, mask_file, point_cloud_out_2_path, voxel_size)
+
+    # extract_point_cloud_by_3D_mask(point_cloud_1_path, mask_file, point_cloud_out_1_path, voxel_size)
+    # extract_point_cloud_by_3D_mask(point_cloud_2_path, mask_file, point_cloud_out_2_path, voxel_size)
 
     if delete_mask_file:
         os.remove(mask_file)
