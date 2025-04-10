@@ -64,6 +64,8 @@ Exemplary [Jupyter Notebooks](./jupyter) are available.
 * Computation of voxel based statistics for existing attributes
 * Voxel based 3D masking of point clouds
 * Voxel attribute based filtering of point clouds
+* Voxel based change detection
+* [Hierarchical change analysis](https://doi.org/10.5445/IR/1000180377) (using [VAPC](https://github.com/3dgeo-heidelberg/vapc) and [py4dgeo](https://github.com/3dgeo-heidelberg/py4dgeo)) 
 
 ## Command line `VAPC`
 Using VAPC from the command line with config files is explained in the [how to command line](how_to_command_line.md). 
@@ -72,6 +74,7 @@ Using VAPC from the command line with config files is explained in the [how to c
 A small test dataset is currently provided in [test data](./tests/test_data).
 
 # Related
+
 [3DGeo Research Group, Heidelberg University](https://github.com/3dgeo-heidelberg) - Focused on the development of methods for the geographic analysis of 3D/4D point clouds.
 
 # License
