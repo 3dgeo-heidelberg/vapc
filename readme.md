@@ -12,7 +12,7 @@
 
 3D/4D point clouds are used in many fields and applications. Efficient processing of dense time series of point clouds or large study sites requires tools for automatic analysis. Moreover, methods considering the full 4D (3D space + time) data are being developed in research and need to be made available in an accessible way with flexible integration into existing workflows.
 
-The **main objective** of `vapc` is to bundle and provide different methods of 3D/4D point cloud processing using a voxel-based structure in a dedicated, comprehensive Python library.
+The **main objective** of `VAPC` is to bundle and provide different methods of 3D/4D point cloud processing using a voxel-based structure in a dedicated, comprehensive Python library.
 
 <p align="center">
   <a href="#installation">Installation</a> •
@@ -57,21 +57,24 @@ $ python -m pip install -v --editable .
 ## Jupyter Notebooks
 Exemplary [Jupyter Notebooks](./jupyter) are available.
 
-### Some useful tools provided by `vapc`
+### Some useful tools provided by `VAPC`
 * Subsampling of point clouds
 * Voxelisation of point clouds
 * Computation of voxel based attributes
 * Computation of voxel based statistics for existing attributes
 * Voxel based 3D masking of point clouds
 * Voxel attribute based filtering of point clouds
+* Voxel based change detection
+* [Hierarchical change analysis](https://doi.org/10.5445/IR/1000180377) (using [VAPC](https://github.com/3dgeo-heidelberg/vapc) and [py4dgeo](https://github.com/3dgeo-heidelberg/py4dgeo)) 
 
-## Command line `vapc`
-Using vapc from the command line with config files is explained in the [how to command line](how_to_command_line.md). 
+## Command line `VAPC`
+Using VAPC from the command line with config files is explained in the [how to command line](how_to_command_line.md). 
 
 # Download
 A small test dataset is currently provided in [test data](./tests/test_data).
 
 # Related
+
 [3DGeo Research Group, Heidelberg University](https://github.com/3dgeo-heidelberg) - Focused on the development of methods for the geographic analysis of 3D/4D point clouds.
 
 # License

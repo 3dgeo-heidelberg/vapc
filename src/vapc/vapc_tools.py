@@ -1,6 +1,7 @@
 from .vapc import Vapc
 from .datahandler import DataHandler
-
+from .bi_vapc import BiTemporalVapc
+import os
 
 def initiate_vapc(lazfile, voxel_size, origin=None):
     """
@@ -88,10 +89,11 @@ def mask(vapc_pc, maskfile, segment_in_or_out, buffer_size, reduce_to=False):
     vapc_mask.compute_offset()
     # Buffer mask voxelized point cloud
     vapc_mask.compute_voxel_buffer(buffer_size=int(buffer_size))
+    vapc_mask.voxel_index = False
     vapc_mask.df = vapc_mask.buffer_df
     # Select by mask
     vapc_pc.select_by_mask(
-        vapc_mask, mask_attribute="voxel_index", segment_in_or_out=segment_in_or_out
+        vapc_mask, segment_in_or_out=segment_in_or_out
     )
     # Undo offset
     vapc_pc.compute_offset()
@@ -408,8 +410,13 @@ def use_tool(tool_name, infile, outfile, voxel_size, args, reduce_to):
         )
     else:
         raise ValueError(f"unknown tool '{tool_name}'")
-    dh.save_as_las(outfile)
-
+    if outfile.endswith(".las") or outfile.endswith(".las"):
+        dh.save_as_las(outfile)
+    elif outfile.endswith(".ply"):
+        print("PLY")
+        dh.save_as_ply(outfile, voxel_size, shift_to_center=False)
+    else:
+        return "Unknown output format"
 
 def lasz_to_ply(infile, outfile, voxel_size, shift_to_center=False):
     """
@@ -444,3 +451,206 @@ def lasz_to_ply(infile, outfile, voxel_size, shift_to_center=False):
         outfile=outfile, voxel_size=voxel_size, shift_to_center=shift_to_center
     )
     return True
+
+
+
+
+########################## MESH-Voxel-PC tools ##################################
+def mesh_vertices_to_vapc( mesh_file,
+                          skip_rows = 2, 
+                          voxel_size = 1):
+        dh = DataHandler(mesh_file)
+        dh.open_obj_mesh(skiprows=skip_rows)
+        vp = Vapc(voxel_size)
+        vp.df = dh.vertex_df
+        return vp
+
+def point_cloud_to_vapc(point_cloud_file, 
+                        voxel_size = 1):
+        dh = DataHandler(point_cloud_file)
+        dh.load_las_files()
+        vp = Vapc(voxel_size)
+        vp.df = dh.df
+        return vp
+
+def select_mesh_by_mask(dh_scene,vp_scene,outfile,strict=True): #TODO: Add notebook example
+    """
+    Selects and saves a mesh based on a vertex mask.
+
+    This function filters the faces of a mesh based on whether their vertices
+    are included in a given mask. The filtered mesh is then saved to an OBJ file.
+
+    Parameters:
+    dh_scene (object): An object representing the scene containing the mesh to be filtered.
+                        It should have a 'face_df' attribute which is a DataFrame containing
+                        the faces of the mesh, with columns 'v1', 'v2', and 'v3' representing
+                        the vertex IDs of each face.
+    vp_scene (object): A Vapc object representing the scene containing the vertex mask.
+                        It should have a 'df' attribute which is a DataFrame containing
+                        the vertex IDs in a column named 'vertex_id'.
+    outfile (str): The path to the output file where the filtered mesh will be saved.
+    strict (bool, optional): If True, only faces where all vertices are in the mask
+                                will be selected. If False, faces where at least one
+                                vertex is in the mask will be selected. Default is True.
+
+    Returns:
+    None
+    """
+    # Make a working copy of the faces DataFrame.
+    # Get the list (or Series) of vertex IDs from the mask.
+    mask_vertex_ids = vp_scene.df['vertex_id']
+    # Create boolean Series indicating whether each face vertex is in the mask.
+    v1_in = dh_scene.face_df['v1'].isin(mask_vertex_ids)
+    v2_in = dh_scene.face_df['v2'].isin(mask_vertex_ids)
+    v3_in = dh_scene.face_df['v3'].isin(mask_vertex_ids)
+    # Determine the selection mask based on the segmentation mode and strictness.
+    if strict:
+        # Strict: all vertices must be inside.
+        selection = v1_in & v2_in & v3_in
+    else:
+        # Non-strict: at least one vertex inside.
+        selection = v1_in | v2_in | v3_in
+    # Filter the face DataFrame.
+    dh_scene.face_df = dh_scene.face_df[selection]
+    # Save the segmented OBJ mesh.
+    dh_scene.save_obj_mesh(outfile)
+
+def extract_point_cloud_by_3D_mask(scene_file, mask_file, outfile, voxel_size = 1, segment_mode='in', mode = "p", skiprows = 2): #TODO: Add notebook example
+    """
+    Extracts a point cloud from a scene file using a 3D mask and saves the result to an output file.
+
+    Parameters:
+    scene_file (str): Path to the input scene file containing the point cloud data.
+    mask_file (str): Path to the mask file used to filter the point cloud.
+    outfile (str): Path to the output file where the filtered point cloud will be saved.
+    voxel_size (int, optional): Size of the voxel grid used for processing. Default is 1.
+    segment_mode (str, optional): Mode for segmenting the point cloud. Can be 'in' or 'out'. Default is 'in'.
+    mode (str, optional): Mode for processing the mask file. 'm' for mesh vertices, 'p' for point cloud. Default is 'p'.
+    skiprows (int, optional): Number of rows to skip when reading the mask file. Default is 2.
+
+    Raises:
+    ValueError: If the mode is not 'm' or 'p'.
+
+    Returns:
+    None
+    """
+    dh_scene = DataHandler(scene_file)
+    dh_scene.load_las_files()
+    if mode == "m":
+        vp_mask = mesh_vertices_to_vapc(mask_file,skip_rows = skiprows, voxel_size = voxel_size)
+    elif mode == "p":
+        vp_mask = point_cloud_to_vapc(mask_file, voxel_size = voxel_size)
+    else:   
+        raise ValueError("mode must be either 'm' or 'p', seperated by '_'")
+    vp_scene = Vapc(voxel_size)
+    vp_scene.df = dh_scene.df
+    # Use vapc select_by_mask method to select vertices inside the mask.
+    vp_scene.select_by_mask(vp_mask,segment_in_or_out=segment_mode)
+    dh_scene.df = vp_scene.df
+    dh_scene.save_as_las(outfile)
+                   
+def extract_mesh_by_3D_mask(scene_file, mask_file, outfile, skiprows = 2, skiprows_mask = 2, voxel_size = 1, mode = "m", segment_mode='in', strict=True): #TODO: Add notebook example
+    """
+    Extracts a mesh from a 3D scene file using a 3D mask and saves the result to an output file.
+
+    Parameters:
+    scene_file (str): Path to the 3D scene file.
+    mask_file (str): Path to the 3D mask file.
+    outfile (str): Path to the output file where the extracted mesh will be saved.
+    skiprows (int, optional): Number of rows to skip when reading the scene file. Default is 2.
+    skiprows_mask (int, optional): Number of rows to skip when reading the mask file. Default is 2.
+    voxel_size (int, optional): Size of the voxel for the mask. Default is 1.
+    mode (str, optional): Mode for processing the mask file. 'm' for mesh vertices, 'p' for point cloud. Default is 'm'.
+    segment_mode (str, optional): Mode for segmenting the mesh. 'in' to select vertices inside the mask, 'out' to select vertices outside the mask. Default is 'in'.
+    strict (bool, optional): If True, only faces where all vertices are in the mask will be selected. If False, faces where at least one vertex is in the mask will be selected. Default is True.
+
+    Returns:
+    bool: True if the mesh extraction is successful.
+    
+    Raises:
+    ValueError: If the mode is not 'm' or 'p'.
+    """
+    dh_scene = DataHandler(scene_file)
+    dh_scene.open_obj_mesh(skiprows=skiprows)
+    if mode == "m":
+        vp_mask = mesh_vertices_to_vapc(mask_file,skip_rows = skiprows_mask, voxel_size = voxel_size)
+    elif mode == "p":
+        vp_mask = point_cloud_to_vapc(mask_file, voxel_size = voxel_size)
+    else:   
+        raise ValueError("mode must be either 'm' or 'p', seperated by '_'")
+    vp_scene = Vapc(voxel_size)
+    vp_scene.df = dh_scene.vertex_df
+    # Use vapc select_by_mask method to select vertices inside the mask.
+    vp_scene.select_by_mask(vp_mask,segment_in_or_out=segment_mode)
+    select_mesh_by_mask(dh_scene,vp_scene,outfile,strict=strict)
+    return True                          
+
+
+def extract_point_cloud_by_3D_mask_and_label(scene_file, mask_file, outfile, voxel_size = 1, segment_mode='in', mode = "p", skiprows = 2): #TODO: Add notebook example
+    """
+    Extracts a point cloud from a scene file using a 3D mask and saves the result to an output file. Add label to the extracted point cloud based on the mask.
+
+    Parameters:
+    scene_file (str): Path to the input scene file containing the point cloud data.
+    mask_file (str): Path to the mask file used to filter the point cloud.
+    outfile (str): Path to the output file where the filtered point cloud will be saved.
+    voxel_size (int, optional): Size of the voxel grid used for processing. Default is 1.
+    segment_mode (str, optional): Mode for segmenting the point cloud. Can be 'in' or 'out'. Default is 'in'.
+    mode (str, optional): Mode for processing the mask file. 'm' for mesh vertices, 'p' for point cloud. Default is 'p'.
+    skiprows (int, optional): Number of rows to skip when reading the mask file. Default is 2.
+
+    Raises:
+    ValueError: If the mode is not 'm' or 'p'.
+
+    Returns:
+    None
+    """
+    dh_scene = DataHandler(scene_file)
+    dh_scene.load_las_files()
+    if mode == "m":
+        vp_mask = mesh_vertices_to_vapc(mask_file,skip_rows = skiprows, voxel_size = voxel_size)
+    elif mode == "p":
+        vp_mask = point_cloud_to_vapc(mask_file, voxel_size = voxel_size)
+    else:   
+        raise ValueError("mode must be either 'm' or 'p', seperated by '_'")
+    vp_scene = Vapc(voxel_size)
+    vp_scene.df = dh_scene.df
+    # Use vapc select_by_mask method to select vertices inside the mask.
+    vp_scene.select_by_mask(vp_mask,segment_in_or_out=segment_mode)
+    vp_scene.label_by_mask(vp_mask,["mahalanobi_significance", "p_value","change_type"])
+    dh_scene.df = vp_scene.df
+    dh_scene.save_as_las(outfile)
+
+
+def extract_areas_with_change_using_mahalanobis_distance(point_cloud_1_path, point_cloud_2_path, mask_file, point_cloud_out_1_path, point_cloud_out_2_path, voxel_size, alpha_value, delete_mask_file=True):
+    #Open point clouds
+    vapc_1 = point_cloud_to_vapc(point_cloud_file=point_cloud_1_path,
+                            voxel_size=voxel_size)
+    vapc_2 = point_cloud_to_vapc(point_cloud_file=point_cloud_2_path,
+                            voxel_size=voxel_size)
+
+    # Initiate Bi-temporal VAPC
+    bi_vapc = BiTemporalVapc([vapc_1, vapc_2])
+    bi_vapc.prepare_data_for_mahalanobis_distance() #prepare data for mahalanobis distance
+    bi_vapc.merge_vapcs_with_same_voxel_index() #defines how comparison is done. Here, it is done per same voxel index.
+    # bi_vapc.compute_distance() #euclidean distance -> optional
+    bi_vapc.compute_mahalanobis_distance(alpha=alpha_value) #alpha value for chi2
+    bi_vapc.compute_voxels_occupied_in_single_epoch() #Also get disappearing and appearing voxels
+
+    # Prepare data for export
+    bi_vapc.prepare_data_for_export()
+    # As we only want areas where change might have happened areas where the change 
+    # type is 1 (mahalanobis significant), 2 (less than 30 points in voxel), 3 (disappearing), 
+    # and 4 (appearing) are kept.
+    bi_vapc.df = bi_vapc.df[(bi_vapc.df["change_type"] >= 1)]
+    bi_vapc.save_to_las(mask_file)
+
+    # Clip area from T1 and T2
+    extract_point_cloud_by_3D_mask_and_label(point_cloud_1_path, mask_file, point_cloud_out_1_path, voxel_size)
+    extract_point_cloud_by_3D_mask_and_label(point_cloud_2_path, mask_file, point_cloud_out_2_path, voxel_size)
+
+    # extract_point_cloud_by_3D_mask(point_cloud_1_path, mask_file, point_cloud_out_1_path, voxel_size)
+    # extract_point_cloud_by_3D_mask(point_cloud_2_path, mask_file, point_cloud_out_2_path, voxel_size)
+
+    if delete_mask_file:
+        os.remove(mask_file)

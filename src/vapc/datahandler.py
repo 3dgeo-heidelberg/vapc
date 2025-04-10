@@ -258,6 +258,9 @@ class DataHandler:
         self.voxel_size = voxel_size
         self._validate_is_voxelized()
 
+        for enum, scalar in enumerate(self.df.columns.values):
+            self.df.columns.values[enum] = scalar.replace(" ", "_")
+
         # Adjust color values if necessary
         if (
             "red" in self.df.columns
@@ -397,3 +400,159 @@ class DataHandler:
                 Please voxelize data using 'reduce_at'=='center_of_voxel' before saving as PLY",
                 UserWarning
             )
+
+    ###### Mesh functions ######
+    def open_obj_mesh(self,skiprows = 2): #TODO: Implement tests
+        """
+        Reads an OBJ mesh file and processes its vertices, vertex normals, and faces.
+        Parameters:
+        skiprows (int): Number of rows to skip at the beginning of the file. Default is 2.
+        Returns:
+        None: The function sets the following attributes on the object:
+            - self.face_df: A DataFrame containing the processed face data with vertex and normal coordinates.
+            - self.vertex_df: A DataFrame containing the processed vertex data with renamed columns for compatibility with vapc.
+        Notes:
+        - The function assumes that the OBJ file contains vertices ('v'), vertex normals ('vn'), and faces ('f').
+        - Faces are assumed to be defined in the format: f v1//vn1 v2//vn2 v3//vn3.
+        - Only one file can be read at a time. If more than one file is provided, the function will print a message and return.
+        """
+        if len(self.files)>1:
+            print('Only one file can be read at a time')
+            return
+        df = pd.read_csv(self.files[0], sep=' ', header=None, names=['prefix','x', 'y', 'z'], skiprows=skiprows)
+        df = df[df['prefix'].isin(['v','vn','f'])]
+        v_df  = df[df['prefix'] == 'v'].reset_index(drop=True)
+        vn_df = df[df['prefix'] == 'vn'].reset_index(drop=True)
+        f_df  = df[df['prefix'] == 'f'].reset_index(drop=True)
+        v_df['vertex_id'] = v_df.index + 1
+        vn_df['normal_id'] = vn_df.index + 1
+
+        # Assume faces are defined as:
+        #   f 1//1 2//2 3//3
+        f_df[['v1', 'vn1']] = f_df['x'].str.split('//', expand=True)
+        f_df[['v2', 'vn2']] = f_df['y'].str.split('//', expand=True)
+        f_df[['v3', 'vn3']] = f_df['z'].str.split('//', expand=True)
+
+
+        for col in ['v1', 'vn1', 'v2', 'vn2', 'v3', 'vn3']:
+            f_df[col] = f_df[col].astype(int)
+
+        # Work on a copy of f_df for merging:
+        face = f_df.copy()
+
+        # --- Merge for vertex 1 and its normal ---
+        # Prepare vertex data for vertex 1
+        v1_df = v_df[['vertex_id', 'x', 'y', 'z']].rename(
+            columns={'x': 'v1_x', 'y': 'v1_y', 'z': 'v1_z'}
+        )
+        face = face.merge(v1_df, left_on='v1', right_on='vertex_id', how='left')
+        face.drop(columns='vertex_id', inplace=True)  # drop the temporary merge key
+        # Create mapping Series for vertices and normals
+        v_map_x = v_df.set_index('vertex_id')['x']
+        v_map_y = v_df.set_index('vertex_id')['y']
+        v_map_z = v_df.set_index('vertex_id')['z']
+
+        vn_map_x = vn_df.set_index('normal_id')['x']
+        vn_map_y = vn_df.set_index('normal_id')['y']
+        vn_map_z = vn_df.set_index('normal_id')['z']
+
+        # Map the values for each vertex of each face
+        face['v1_x'] = face['v1'].map(v_map_x)
+        face['v1_y'] = face['v1'].map(v_map_y)
+        face['v1_z'] = face['v1'].map(v_map_z)
+        face['vn1_x'] = face['vn1'].map(vn_map_x)
+        face['vn1_y'] = face['vn1'].map(vn_map_y)
+        face['vn1_z'] = face['vn1'].map(vn_map_z)
+
+        face['v2_x'] = face['v2'].map(v_map_x)
+        face['v2_y'] = face['v2'].map(v_map_y)
+        face['v2_z'] = face['v2'].map(v_map_z)
+        face['vn2_x'] = face['vn2'].map(vn_map_x)
+        face['vn2_y'] = face['vn2'].map(vn_map_y)
+        face['vn2_z'] = face['vn2'].map(vn_map_z)
+
+        face['v3_x'] = face['v3'].map(v_map_x)
+        face['v3_y'] = face['v3'].map(v_map_y)
+        face['v3_z'] = face['v3'].map(v_map_z)
+        face['vn3_x'] = face['vn3'].map(vn_map_x)
+        face['vn3_y'] = face['vn3'].map(vn_map_y)
+        face['vn3_z'] = face['vn3'].map(vn_map_z)
+        self.face_df = face
+        #Make input suitable for vapc
+        self.vertex_df = v_df.rename(columns={'x': 'X', 'y': 'Y', 'z': 'Z'})
+        
+        self.vertex_df["X"] = self.vertex_df["X"].astype(float)
+        self.vertex_df["Y"] = self.vertex_df["Y"].astype(float)
+        self.vertex_df["Z"] = self.vertex_df["Z"].astype(float)
+        #remove prefix as it is clear from the name
+        self.vertex_df = self.vertex_df.drop(columns=['prefix'])
+
+    def save_obj_mesh(self, outfile):#TODO: Implement tests
+        """
+        Save the faces DataFrame (returned by open_obj) to a new OBJ file.
+        
+        This function extracts unique vertex and normal definitions from the face_df,
+        re-indexes them, and writes out vertex (v), vertex normal (vn), and face (f)
+        definitions to outfile.
+        
+        Parameters:
+        face_df: DataFrame returned by open_obj. It must include columns:
+                'v1_x', 'v1_y', 'v1_z', 'v2_x', 'v2_y', 'v2_z', 'v3_x', 'v3_y', 'v3_z',
+                'vn1_x', 'vn1_y', 'vn1_z', 'vn2_x', 'vn2_y', 'vn2_z', 'vn3_x', 'vn3_y', 'vn3_z',
+                as well as the face index columns 'v1', 'vn1', 'v2', 'vn2', 'v3', 'vn3'.
+        outfile: String path for the new OBJ file to be written.
+        """
+        face_df = self.face_df
+        #If face df is empty, we can not save anything
+        if face_df.shape[0] == 0:
+            print("No faces to save")
+            return
+        # --- Extract Vertex Data ---
+        # Rename columns for each face vertex group to a common format
+        v1 = face_df[['v1_x', 'v1_y', 'v1_z']].rename(columns={'v1_x':'x', 'v1_y':'y', 'v1_z':'z'})
+        v2 = face_df[['v2_x', 'v2_y', 'v2_z']].rename(columns={'v2_x':'x', 'v2_y':'y', 'v2_z':'z'})
+        v3 = face_df[['v3_x', 'v3_y', 'v3_z']].rename(columns={'v3_x':'x', 'v3_y':'y', 'v3_z':'z'})
+        # Concatenate and remove duplicates
+        vertices = pd.concat([v1, v2, v3], ignore_index=True)
+        unique_vertices = vertices.drop_duplicates().reset_index(drop=True)
+        unique_vertices['new_index'] = unique_vertices.index + 1  # OBJ indices start at 1
+
+        # --- Extract Normal Data ---
+        n1 = face_df[['vn1_x', 'vn1_y', 'vn1_z']].rename(columns={'vn1_x':'x', 'vn1_y':'y', 'vn1_z':'z'})
+        n2 = face_df[['vn2_x', 'vn2_y', 'vn2_z']].rename(columns={'vn2_x':'x', 'vn2_y':'y', 'vn2_z':'z'})
+        n3 = face_df[['vn3_x', 'vn3_y', 'vn3_z']].rename(columns={'vn3_x':'x', 'vn3_y':'y', 'vn3_z':'z'})
+        normals = pd.concat([n1, n2, n3], ignore_index=True)
+        unique_normals = normals.drop_duplicates().reset_index(drop=True)
+        unique_normals['new_index'] = unique_normals.index + 1
+
+        # --- Create Mapping Dictionaries ---
+        # Map coordinate tuples to the new index
+        vertex_map = { (row['x'], row['y'], row['z']): row['new_index'] 
+                    for _, row in unique_vertices.iterrows() }
+        normal_map = { (row['x'], row['y'], row['z']): row['new_index'] 
+                    for _, row in unique_normals.iterrows() }
+
+        # --- Update Face DataFrame with New Indices ---
+        # We map each face's original vertex coordinates to the new index.
+        # Note: Using apply is simple (though not super fast for huge files)
+        face_df = face_df.copy()  # avoid modifying the original
+        face_df['nv1'] = face_df.apply(lambda r: vertex_map[(r['v1_x'], r['v1_y'], r['v1_z'])], axis=1)
+        face_df['nv2'] = face_df.apply(lambda r: vertex_map[(r['v2_x'], r['v2_y'], r['v2_z'])], axis=1)
+        face_df['nv3'] = face_df.apply(lambda r: vertex_map[(r['v3_x'], r['v3_y'], r['v3_z'])], axis=1)
+        
+        face_df['nvn1'] = face_df.apply(lambda r: normal_map[(r['vn1_x'], r['vn1_y'], r['vn1_z'])], axis=1)
+        face_df['nvn2'] = face_df.apply(lambda r: normal_map[(r['vn2_x'], r['vn2_y'], r['vn2_z'])], axis=1)
+        face_df['nvn3'] = face_df.apply(lambda r: normal_map[(r['vn3_x'], r['vn3_y'], r['vn3_z'])], axis=1)
+
+        # --- Write the New OBJ File ---
+        with open(outfile, 'w') as f:
+            # Write vertex definitions
+            for _, row in unique_vertices.iterrows():
+                f.write(f"v {row['x']} {row['y']} {row['z']}\n")
+            # Write vertex normal definitions
+            for _, row in unique_normals.iterrows():
+                f.write(f"vn {row['x']} {row['y']} {row['z']}\n")
+            # Write face definitions.
+            # Each face line follows the format: f v_index//vn_index v_index//vn_index v_index//vn_index
+            for _, row in face_df.iterrows():
+                f.write(f"f {row['nv1']}//{row['nvn1']} {row['nv2']}//{row['nvn2']} {row['nv3']}//{row['nvn3']}\n")

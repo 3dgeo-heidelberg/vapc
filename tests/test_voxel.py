@@ -115,63 +115,14 @@ def test_compute_voxel_index(vapc_dataset_factory, input_df_from_voxel):
     # expected indices
     unique_voxels = np.column_stack([VOXEL_X, VOXEL_Y, VOXEL_Z])
     voxel_idx = np.repeat(unique_voxels, PPTS_PER_VOXEL, axis=0)
-    # actual indices
-    actual_idx = vapc_dataset.df[["voxel_index"]].values
-    actual_idx = np.array(actual_idx)
-    # reshape
-    actual_idx = np.array([list(row[0]) for row in actual_idx])
+    # actual indices of df
+    df_actual_idx = vapc_dataset.df.index.to_frame(index=False)
+    # DataFrame to a NumPy array
+    actual_idx = df_actual_idx.to_numpy()
     # assertions
     assert vapc_dataset.voxel_index is True
     assert voxel_idx.shape[0] == actual_idx.shape[0]
     np.testing.assert_equal(actual_idx, voxel_idx)
-
-
-@pytest.mark.parametrize("n", [100000, 1000000000])
-def test_compute_big_int_index(vapc_dataset_factory, input_df_from_voxel, n):
-    """
-    Test the computation of big integer indices.
-    """
-    vapc_dataset = vapc_dataset_factory(input_df_from_voxel)
-    vapc_dataset.compute_big_int_index(n=n)
-    assert vapc_dataset.big_int_index is True
-    # expected indices
-    unique_voxels = np.column_stack([VOXEL_X, VOXEL_Y, VOXEL_Z])
-    big_int_idx = (
-        unique_voxels[:, 0] * n**2
-        + unique_voxels[:, 1] * n
-        + unique_voxels[:, 2]
-        )
-    big_int_idx = np.repeat(big_int_idx, PPTS_PER_VOXEL)
-    # actual indices
-    actual_idx = vapc_dataset.df["big_int_index"].values
-    assert big_int_idx.shape[0] == actual_idx.shape[0]
-    np.testing.assert_equal(actual_idx, big_int_idx)
-
-
-@pytest.mark.parametrize("n", [100000, 1000000000])
-def test_compute_hash_index(vapc_dataset_factory, input_df_from_voxel, n):
-    """
-    Test the computation of hash indices.
-    """
-    p1 = 76690892503
-    p2 = 15752609759
-    p3 = 27174879103
-    vapc_dataset = vapc_dataset_factory(input_df_from_voxel)
-    vapc_dataset.compute_hash_index(p1=p1, p2=p2, p3=p3, n=n)
-    assert vapc_dataset.hash_index is True
-    # expected indices
-    unique_voxels = np.column_stack([VOXEL_X, VOXEL_Y, VOXEL_Z])
-    hash_idx = (
-        (unique_voxels[:, 0] * p1)
-        ^ (unique_voxels[:, 1] * p2)
-        ^ (unique_voxels[:, 2] * p3)
-        ) % n
-    hash_idx = np.repeat(hash_idx, PPTS_PER_VOXEL)
-    # actual indices
-    actual_idx = vapc_dataset.df["hash_index"].values
-    assert hash_idx.shape[0] == actual_idx.shape[0]
-    np.testing.assert_equal(actual_idx, hash_idx)
-
 
 def test_compute_voxel_corner(vapc_dataset_factory, input_df_from_voxel):
     """

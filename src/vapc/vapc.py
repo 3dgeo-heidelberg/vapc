@@ -8,8 +8,6 @@ from .utilities import trace, timeit, compute_mode_continuous
 class Vapc:
     # TODO: @Ronny: Why AVAILABE_COMPUTATIONS as class attribute and as instance attribute?
     AVAILABLE_COMPUTATIONS = [
-        "big_int_index",
-        "hash_index",
         "voxel_index",
         "point_count",
         "point_density",
@@ -71,8 +69,6 @@ class Vapc:
             raise ValueError("origin must be a list of three coordinates [x, y, z].")
 
         self.AVAILABLE_COMPUTATIONS = [
-            "big_int_index",
-            "hash_index",
             "voxel_index",
             "point_count",
             "point_density",
@@ -93,8 +89,6 @@ class Vapc:
         # Calculations not applied yet:
         self.attributes_up_to_data = False
         self.voxelized = False
-        self.big_int_index = False
-        self.hash_index = False
         self.voxel_index = False
         self.point_count = False
         self.point_density = False
@@ -222,8 +216,6 @@ class Vapc:
         the corresponding methods to compute various attributes of the voxel data.
 
         The available computations are:
-            - "big_int_index"
-            - "hash_index"
             - "voxel_index"
             - "point_count"
             - "point_density"
@@ -338,7 +330,11 @@ class Vapc:
             - Updates `self.df` by merging the computed statistics.
             - Sets `self.attributes_per_voxel` to True.
         """
-        # import time
+        
+        #Check if any attributes are specified
+        if self.attributes == {}:
+            print("No attributes specified for computation. Skipping.")
+            return
 
         # Ensure data is voxelized
         if not self.voxelized:
@@ -424,6 +420,8 @@ class Vapc:
                             raise ValueError(
                                 f"Cannot compute 'mode_count' for continuous attribute '{attr}'"
                             ) from exc
+                    
+                        counts = counts[counts!=0]
                         proportions = counts / counts_sum
                         count_above_threshold = np.sum(proportions >= percentage)
                         value = count_above_threshold
@@ -467,34 +465,6 @@ class Vapc:
 
         self.attributes_per_voxel = True
 
-
-    @trace
-    @timeit
-    def compute_big_int_index(self, n=1000000000):
-        """
-        Computes a big int index for all occupied voxels (as a int).
-        Do not set n > 1000000000, errors will occur.
-
-        Parameters
-        ----------
-        n : int, optional
-            The base multiplier for voxel indexing. Defaults to 1000000000.
-
-        Notes
-        -----
-        - Adds a new column 'big_int_index' to `self.df`.
-        """
-        if self.voxelized is False:
-            self.voxelize()
-            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-
-        self.df.loc[:, "big_int_index"] = (
-            self.df.loc[:, "voxel_x"] * n**2
-            + self.df.loc[:, "voxel_y"] * n
-            + self.df.loc[:, "voxel_z"]
-        )
-        self.big_int_index = True
-
     @trace
     @timeit
     def compute_voxel_index(self):
@@ -505,13 +475,13 @@ class Vapc:
         -----
         - Adds a new column 'voxel_index' to `self.df`.
         """
+        if self.voxel_index:
+            return
         if not self.voxelized:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-
-        self.df["voxel_index"] = list(
-            zip(self.df["voxel_x"], self.df["voxel_y"], self.df["voxel_z"])
-        )
+        self.df.set_index(["voxel_x", "voxel_y", "voxel_z"], inplace=True,drop = False)
+        self.df.index.set_names(["idx_voxel_x", "idx_voxel_y", "idx_voxel_z"], inplace=True)
         self.voxel_index = True
 
     @trace
@@ -543,10 +513,11 @@ class Vapc:
         if not self.voxelized:
             self.voxelize()
 
-        required_columns = ["voxel_x", "voxel_y", "voxel_z"]
-        coords = (
-            self.df[required_columns].drop_duplicates().values
-        )  # Avoid duplicate voxels
+        if not self.voxel_index:
+            self.compute_voxel_index()
+
+        # Get unique voxel coordinates
+        coords = np.array(self.df.index.unique().tolist())
 
         # Generate offset combinations
         offsets = np.arange(-buffer_size, buffer_size + 1)
@@ -563,9 +534,7 @@ class Vapc:
         )  # Flatten to (num_voxels * num_offsets, 3)
 
         # Remove duplicate coordinates
-        result_df = pd.DataFrame(result, columns=required_columns).drop_duplicates()
-
-        # Optionally, remove coordinates outside the original data bounds if necessary
+        result_df = pd.DataFrame(result, columns=["voxel_x", "voxel_y", "voxel_z"]).drop_duplicates()
 
         # Store the buffer coordinates in a new attribute
         self.buffer_df = result_df.reset_index(drop=True)
@@ -573,7 +542,7 @@ class Vapc:
     @trace
     @timeit
     def select_by_mask(
-        self, vapc_mask, mask_attribute="voxel_index", segment_in_or_out="in"
+        self, vapc_mask, segment_in_or_out="in"
     ):
         """
         Filters the data points based on a mask provided by another Vapc instance.
@@ -615,78 +584,100 @@ class Vapc:
         if vapc_mask.voxelized is False:
             vapc_mask.voxelize()
 
-        if mask_attribute not in self.df.columns:
-            # Attempt to compute the attribute
-            if hasattr(self, f"compute_{mask_attribute}"):
-                getattr(self, f"compute_{mask_attribute}")()
-            else:
-                raise AttributeError(
-                    f"Attribute '{mask_attribute}' not found and cannot be computed."
-                )
+        if vapc_mask.voxel_index is False:
+            vapc_mask.compute_voxel_index()
 
-        if mask_attribute not in vapc_mask.df.columns:
-            if hasattr(vapc_mask, f"compute_{mask_attribute}"):
-                getattr(vapc_mask, f"compute_{mask_attribute}")()
-            else:
-                raise AttributeError(
-                    f"Attribute '{mask_attribute}' not found in `vapc_mask` and cannot be computed."
-                )
+        if self.voxel_index is False:
+            self.compute_voxel_index()
 
-        # mask by attribute
+        mask_values = vapc_mask.df.index
         if segment_in_or_out == "in":
-            mask_values = set(vapc_mask.df[mask_attribute])
-            self.df = self.df[self.df[mask_attribute].isin(mask_values)].reset_index(
-                drop=True
-            )
+            self.df = self.df.loc[self.df.index.isin(mask_values)]
         elif segment_in_or_out == "out":
-            mask_values = set(vapc_mask.df[mask_attribute])
-            self.df = self.df[~self.df[mask_attribute].isin(mask_values)].reset_index(
-                drop=True
-            )
+            self.df = self.df.loc[~self.df.index.isin(mask_values)]
         else:
             raise ValueError(
                 "Parameter 'segment_in_or_out' must be either 'in' or 'out'."
             )
 
-        # print("Points after filtering:",self.df.shape)
-        self.df = self.df.drop(
-            ["voxel_x", "voxel_y", "voxel_z", mask_attribute], axis=1
-        )
+        for attr in ["voxel_x", "voxel_y", "voxel_z"]:
+            try:
+                self.df = self.df.drop([attr], axis=1)
+            except:
+                pass
+        self.voxelized = False
+
+    
+    @trace
+    @timeit
+    def label_by_mask(
+        self, vapc_mask, label_attributes=["voxel_x", "voxel_y", "voxel_z"]):
+        """
+        Labels the data points based on a mask provided by another Vapc instance.
+
+        This method either keeps or removes points that overlap with the mask, depending on the
+        `segment_in_or_out` parameter.
+
+        Parameters
+        ----------
+        vapc_mask : Vapc
+            Another instance of the Vapc class that provides the mask for filtering.
+        mask_attribute : str, optional
+            The attribute used for masking. Defaults to "voxel_index".
+        segment_in_or_out : str, optional
+            Determines whether to keep ("in") or remove ("out") the overlapping points.
+            Must be either "in" or "out". Defaults to "in".
+
+        Raises
+        ------
+        ValueError
+            If `segment_in_or_out` is not "in" or "out".
+        AttributeError
+            If required attributes or data are missing.
+
+        Notes
+        -----
+        - The method modifies `self.df` in-place by filtering data points.
+        - Resets `self.voxelized` to False after filtering.
+        - Removes voxel columns and `mask_attribute` from `self.df` after filtering.
+        """
+
+        if self.df is None or vapc_mask.df is None:
+            raise AttributeError("Both `self.df` and `vapc_mask.df` must exist.")
+
+        if self.voxelized is False:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+
+        if vapc_mask.voxelized is False:
+            vapc_mask.voxelize()
+
+        if vapc_mask.voxel_index is False:
+            vapc_mask.compute_voxel_index()
+
+        if self.voxel_index is False:
+            self.compute_voxel_index()
+           
+
+        # Create a list of labels that exist in vapc_mask.df.columns
+        common_cols = [label for label in label_attributes if label in vapc_mask.df.columns]
+
+        # Join only those columns into self.df based on matching index values.
+        # You can change 'how' to 'inner' if you only want rows with a match in vapc_mask.df.
+        if common_cols:
+            self.df = self.df.join(vapc_mask.df[common_cols], how='left')
+
+
+        for attr in ["voxel_x", "voxel_y", "voxel_z"]:
+            try:
+                self.df = self.df.drop([attr], axis=1)
+            except:
+                pass
         self.voxelized = False
 
     @trace
     @timeit
-    def compute_hash_index(
-        self, p1=76690892503, p2=15752609759, p3=27174879103, n=2**10
-    ):
-        """
-        Computes the hash index for all occupied voxels.
-
-        Parameters
-        ----------
-        p1, p2, p3 : int, optional
-            Large prime numbers used in the hashing function.
-        n : int, optional
-            Modulus for the hashing function. Defaults to 2**10.
-
-        Notes
-        -----
-        - This method adds a new column 'hash_index' to `self.df`.
-        - Be cautious with the size of `n` and the prime numbers to avoid integer overflows.
-        """
-        if self.voxelized is False:
-            self.voxelize()
-            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        self.df["hash_index"] = (
-            (self.df["voxel_x"] * p1)
-            ^ (self.df["voxel_y"] * p2)
-            ^ (self.df["voxel_z"] * p3)
-        ) % n
-        self.hash_index = True
-
-    @trace
-    @timeit
-    def compute_point_count(self):
+    def compute_point_count_old2(self):
         """
         Computes the point count for all occupied voxels.
 
@@ -700,6 +691,37 @@ class Vapc:
         self.df = self.df.merge(
             points_per_voxel, how="left", on=["voxel_x", "voxel_y", "voxel_z"]
         )
+        self.point_count = True
+        
+    @trace
+    @timeit
+    def compute_point_count_old1(self):
+        """
+        Computes the point count for all occupied voxels.
+
+        This method calculates the number of points within each voxel and adds a new column 'point_count' to `self.df`.
+        """
+        if self.voxelized is False:
+            self.voxelize()
+            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
+        group_keys = ["voxel_x", "voxel_y", "voxel_z"]
+        grouped = self.df.groupby(group_keys)
+        self.df["point_count"] = grouped["X"].transform("size")
+        self.point_count = True
+
+    @trace
+    @timeit
+    def compute_point_count(self):
+        """
+        Computes the point count for all occupied voxels.
+
+        This method calculates the number of points within each voxel and adds a new column 'point_count' to `self.df`.
+        """
+        if self.voxelized is False:
+            self.voxelize()
+            
+        grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"])
+        self.df["point_count"] = grouped["X"].transform("size")
         self.point_count = True
 
     @trace
@@ -733,8 +755,8 @@ class Vapc:
         """
         if self.voxel_index is False:
             self.compute_voxel_index()
-            if "voxel_index" not in self.compute:
-                self.drop_columns += ["voxel_index"]
+            # if "voxel_index" not in self.compute:
+            #     self.drop_columns += ["voxel_index"]
         x_min, x_max = self.df["voxel_x"].min(), self.df["voxel_x"].max()
         y_min, y_max = self.df["voxel_y"].min(), self.df["voxel_y"].max()
         z_min, z_max = self.df["voxel_z"].min(), self.df["voxel_z"].max()
@@ -744,7 +766,7 @@ class Vapc:
             z_max - z_min + 1,
         )
         nr_of_voxels_within_bounding_box = x_extent * y_extent * z_extent
-        nr_of_occupied_voxels = len(np.unique(self.df["voxel_index"]))
+        nr_of_occupied_voxels = len(self.df.index.unique()) #len(np.unique(self.df["voxel_index"]))
         self.percentage_occupied = round(
             nr_of_occupied_voxels / nr_of_voxels_within_bounding_box * 100, 2
         )
@@ -811,17 +833,21 @@ class Vapc:
         -----
         - Adds 'cog_x', 'cog_y', 'cog_z' to `self.df`.
         """
-        if self.voxelized is False:
+        if not self.voxelized:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"])
-        self.voxel_cog = grouped[["X", "Y", "Z"]].mean().reset_index()
-        self.voxel_cog.rename(
-            columns={"X": "cog_x", "Y": "cog_y", "Z": "cog_z"}, inplace=True
-        )
-        self.df = self.df.merge(
-            self.voxel_cog, how="left", on=["voxel_x", "voxel_y", "voxel_z"]
-        )
+
+        # Use groupby with transform to compute the mean of the X, Y, Z columns for each voxel,
+        # and broadcast the computed means back to self.df without an merge.
+        cog = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"], sort=False
+                              )[["X", "Y", "Z"]].transform("mean")
+        
+        # Rename the columns to the desired names.
+        cog.columns = ["cog_x", "cog_y", "cog_z"]
+
+        # Assign the computed center-of-gravity columns directly to the DataFrame.
+        self.df[["cog_x", "cog_y", "cog_z"]] = cog
+
         self.center_of_gravity = True
 
     @trace
@@ -834,17 +860,29 @@ class Vapc:
         -----
         - Adds 'std_x', 'std_y', 'std_z' to `self.df`.
         """
-        if self.voxelized is False:
+        # Ensure the DataFrame is voxelized; if not, voxelize and note columns to drop.
+        if not self.voxelized:
             self.voxelize()
             self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"])
-        self.voxel_cog = grouped[["X", "Y", "Z"]].std().reset_index()
-        self.voxel_cog.rename(
-            columns={"X": "std_x", "Y": "std_y", "Z": "std_z"}, inplace=True
-        )
-        self.df = self.df.merge(
-            self.voxel_cog, how="left", on=["voxel_x", "voxel_y", "voxel_z"]
-        )
+
+        # --------------------------------------------------------------------------
+        # CHANGES:
+        # - Instead of performing a groupby followed by computing std, resetting index,
+        #   renaming columns, and then merging back, we use groupby with transform.
+        # - The transform method computes the standard deviation for each group and 
+        #   broadcasts the results back to the original DataFrame's shape.
+        # - This avoids the expensive merge operation.
+        # --------------------------------------------------------------------------
+        std_values = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"], sort=False
+                                     )[["X", "Y", "Z"]].transform("std")
+        
+        # Rename the resulting columns to reflect standard deviation values.
+        std_values.columns = ["std_x", "std_y", "std_z"]
+
+        # Directly assign the computed standard deviation columns to self.df.
+        self.df[["std_x", "std_y", "std_z"]] = std_values
+
+        # Mark that the standard deviation of the center of gravity has been computed.
         self.std_of_cog = True
 
     @trace
@@ -884,49 +922,125 @@ class Vapc:
             self.df[["voxel_x", "voxel_y", "voxel_z"]] * self.voxel_size
         ) + self.origin
         self.corner_of_voxel = True
-
+    
     @trace
     @timeit
     def compute_covariance_matrix(self):
         """
-        Computes the covariance matrix for all occupied voxels.
+        Computes the covariance matrix for each voxel using groupby.transform,
+        avoiding an extra merge step.
 
-        Notes
-        -----
-        - Adds covariance matrix components ('cov_xx', 'cov_xy', ..., 'cov_zz') to `self.df`.
+        For each voxel (grouped by voxel_x, voxel_y, voxel_z), the following aggregates are computed:
+            - n: number of points
+            - sum_x, sum_y, sum_z: sums of coordinates
+            - sum_x2, sum_y2, sum_z2: sums of squares
+            - sum_xy, sum_xz, sum_yz: sums of cross products
+
+        Then, using the formula:
+            cov(x, y) = (sum_xy - (sum_x * sum_y)/n) / (n - 1)
+        the covariance components are computed.
         """
-
-        def _covariance(df):
-            cov_matrix = df[["X", "Y", "Z"]].cov()
-            return cov_matrix.values.flatten()
-
-        if self.voxelized is False:
+        if not self.voxelized:
             self.voxelize()
-            self.drop_columns += ["voxel_x", "voxel_y", "voxel_z"]
-        grouped = self.df.groupby(["voxel_x", "voxel_y", "voxel_z"])
-        cov_df = grouped.apply(_covariance)
-        col_names = [
-            "cov_xx",
-            "cov_xy",
-            "cov_xz",
-            "cov_yx",
-            "cov_yy",
-            "cov_yz",
-            "cov_zx",
-            "cov_zy",
-            "cov_zz",
-        ]
-        covariance_df = pd.DataFrame(
-            cov_df.values.tolist(), index=cov_df.index, columns=col_names
-        ).reset_index()
-        self.df = self.df.merge(
-            covariance_df, how="left", on=["voxel_x", "voxel_y", "voxel_z"]
-        )
-        self.covariance_matrix = True
 
+        df = self.df
+
+        # Precompute extra columns
+        df["X2"] = df["X"] ** 2
+        df["Y2"] = df["Y"] ** 2
+        df["Z2"] = df["Z"] ** 2
+        df["XY"] = df["X"] * df["Y"]
+        df["XZ"] = df["X"] * df["Z"]
+        df["YZ"] = df["Y"] * df["Z"]
+
+        # Define the grouping keys
+        group_keys = ["voxel_x", "voxel_y", "voxel_z"]
+        grouped = df.groupby(group_keys)
+
+        # Compute aggregates using transform so the result aligns with the original DataFrame.
+        df["n"] = grouped["X"].transform("size")
+        df["sum_x"] = grouped["X"].transform("sum")
+        df["sum_y"] = grouped["Y"].transform("sum")
+        df["sum_z"] = grouped["Z"].transform("sum")
+        df["sum_x2"] = grouped["X2"].transform("sum")
+        df["sum_y2"] = grouped["Y2"].transform("sum")
+        df["sum_z2"] = grouped["Z2"].transform("sum")
+        df["sum_xy"] = grouped["XY"].transform("sum")
+        df["sum_xz"] = grouped["XZ"].transform("sum")
+        df["sum_yz"] = grouped["YZ"].transform("sum")
+
+        n = df["n"]
+
+        # Compute covariance components.
+        # For groups with n == 1, we set the covariance to NaN.
+        df["cov_xx"] = np.where(
+            n > 1,
+            (df["sum_x2"] - (df["sum_x"] ** 2) / n) / (n - 1),
+            np.nan
+        )
+        df["cov_yy"] = np.where(
+            n > 1,
+            (df["sum_y2"] - (df["sum_y"] ** 2) / n) / (n - 1),
+            np.nan
+        )
+        df["cov_zz"] = np.where(
+            n > 1,
+            (df["sum_z2"] - (df["sum_z"] ** 2) / n) / (n - 1),
+            np.nan
+        )
+        df["cov_xy"] = np.where(
+            n > 1,
+            (df["sum_xy"] - (df["sum_x"] * df["sum_y"]) / n) / (n - 1),
+            np.nan
+        )
+        df["cov_xz"] = np.where(
+            n > 1,
+            (df["sum_xz"] - (df["sum_x"] * df["sum_z"]) / n) / (n - 1),
+            np.nan
+        )
+        df["cov_yz"] = np.where(
+            n > 1,
+            (df["sum_yz"] - (df["sum_y"] * df["sum_z"]) / n) / (n - 1),
+            np.nan
+        )
+
+        # Since the covariance matrix is symmetric, we assign the mirrored values:
+        df["cov_yx"] = df["cov_xy"]
+        df["cov_zx"] = df["cov_xz"]
+        df["cov_zy"] = df["cov_yz"]
+
+        # Optionally, drop temporary columns if you no longer need them.
+        df.drop(
+            columns=[
+                "X2", "Y2", "Z2", "XY", "XZ", "YZ",
+                "n", "sum_x", "sum_y", "sum_z",
+                "sum_x2", "sum_y2", "sum_z2",
+                "sum_xy", "sum_xz", "sum_yz"
+            ],
+            inplace=True
+        )
+
+        col_names = [
+                    "cov_xx",
+                    "cov_xy",
+                    "cov_xz",
+                    "cov_yx",
+                    "cov_yy",
+                    "cov_yz",
+                    "cov_zx",
+                    "cov_zy",
+                    "cov_zz",
+                ]
+        # Reorder the DataFrame
+        other_cols = [col for col in df.columns if col not in col_names]
+        new_order = col_names + other_cols
+        df = df[new_order]  
+        self.df = df
+        self.covariance_matrix_computed = True
+        
     @trace
     @timeit
-    def compute_eigenvalues(self):
+    def compute_eigenvalues(self):            #TODO: Change compute_eigenvalues to compute_eigenvalues_and_vectors in a similar way to the new implementation of compute_covariance_matrix
         """
         Computes eigenvalues for all occupied voxels.
 
@@ -986,10 +1100,19 @@ class Vapc:
         'Omnivariance', 'Eigentropy', 'Anisotropy', 'Planarity', 'Linearity',
         'Surface_Variation', and 'Sphericity'.
         """
+        def safe_log(x):
+            # Return 0 when x is 0; otherwise return the log.
+            return np.where(x > 0, np.log(x), 0)
         if self.eigenvalues is False:
             self.compute_eigenvalues()
             if "eigenvalues" not in self.compute:
                 self.drop_columns += ["Eigenvalue_1", "Eigenvalue_2", "Eigenvalue_3"]
+        # Normalize eigenvalues so they sum to 1 for each row
+        total = self.df["Eigenvalue_1"] + self.df["Eigenvalue_2"] + self.df["Eigenvalue_3"]
+        self.df["Eigenvalue_1_n"] = self.df["Eigenvalue_1"] / total
+        self.df["Eigenvalue_2_n"] = self.df["Eigenvalue_2"] / total
+        self.df["Eigenvalue_3_n"] = self.df["Eigenvalue_3"] / total
+
         self.df["Sum_of_Eigenvalues"] = (
             self.df["Eigenvalue_1"] + self.df["Eigenvalue_2"] + self.df["Eigenvalue_3"]
         )
@@ -997,13 +1120,15 @@ class Vapc:
             self.df["Eigenvalue_1"] * self.df["Eigenvalue_2"] * self.df["Eigenvalue_3"]
         ) ** (1 / 3)
         try:
-            self.df["Eigentropy"] = -1 * (
-                self.df["Eigenvalue_1"] * math.log(self.df["Eigenvalue_1"])
-                + self.df["Eigenvalue_2"] * math.log(self.df["Eigenvalue_2"])
-                + self.df["Eigenvalue_3"] * math.log(self.df["Eigenvalue_3"])
+            # Now compute entropy using the normalized probabilities
+            self.df["Eigentropy"] = - (
+                self.df["Eigenvalue_1_n"] * safe_log(self.df["Eigenvalue_1_n"])
+                + self.df["Eigenvalue_2_n"] * safe_log(self.df["Eigenvalue_2_n"])
+                + self.df["Eigenvalue_3_n"] * safe_log(self.df["Eigenvalue_3_n"])
             )
         except:
             self.df["Eigentropy"] = np.nan
+        self.df.drop(["Eigenvalue_1_n", "Eigenvalue_2_n","Eigenvalue_3_n"], axis=1)
         self.df["Anisotropy"] = (
             self.df["Eigenvalue_1"] - self.df["Eigenvalue_3"]
         ) / self.df["Eigenvalue_1"]
@@ -1073,12 +1198,13 @@ class Vapc:
                     try 'center_of_gravity', 'center_of_voxel', 'closest_to_center_of_gravity', or 'corner_of_voxel'"
             )
             return
-
         # Update columns with their required values
         for col_name in self.new_column_names.keys():
             self.df[col_name] = self.df[self.new_column_names[col_name]]
+
         self.df = self.df.drop(set(self.drop_columns), axis=1)
-        self.df = self.df.drop_duplicates()
+
+        self.df.drop_duplicates(subset=["X", "Y", "Z"], inplace=True)
         self.df = self.df.groupby(["X", "Y", "Z"], as_index=False).median(numeric_only=True)
         self.reduced = True
 

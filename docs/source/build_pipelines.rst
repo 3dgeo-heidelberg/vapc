@@ -6,5 +6,5 @@ In the following, you find a number of tutorials that demonstrate how pipelines 
 
 .. toctree::
 
-    pypeline_example
+    pipeline_example
     

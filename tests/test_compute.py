@@ -244,9 +244,7 @@ def test_compute_clusters(vapc_dataset_clustering):
 
 # TODO: check if belongs here or rather integration test
 @pytest.mark.parametrize("attribute",
-                         ["big_int_index",
-                          "hash_index",
-                          "voxel_index",
+                         ["voxel_index",
                           "point_count",
                           "point_density",
                           "percentage_occupied",
@@ -299,7 +297,9 @@ def test_compute_requested_statistics_per_attributes(input_df_with_intensity_nor
         # check that the new columns are added
         assert f"{attribute}_{stat}" in vapc_obj.df.columns
         # check that points in the same voxel have the same value
-        assert vapc_obj.df.groupby("voxel_index")[f"{attribute}_{stat}"].nunique().max() == 1
+        # assert vapc_obj.df.groupby("voxel_index")[f"{attribute}_{stat}"].nunique().max() == 1
+        assert vapc_obj.df.groupby(vapc_obj.df.index)[f"{attribute}_{stat}"].nunique().max() == 1
+
         # check that the computed statistics are correct
         if stat == "mean":
             assert np.isclose(vapc_obj.df[f"{attribute}_{stat}"].mean(), input_df_with_intensity_nor[attribute].mean(), atol=1e-08, equal_nan=False)
