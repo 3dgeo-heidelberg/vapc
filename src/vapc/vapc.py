@@ -309,6 +309,8 @@ class Vapc:
 
         The available statistics are:
             - "mean"
+            - "std"
+            - "var"
             - "median"
             - "mode"
             - "min"
@@ -390,6 +392,10 @@ class Vapc:
                     group_slice = sorted_data[attr][start_idx:end_idx]
                     if stat == "mean":
                         value = group_slice.mean()
+                    elif stat == "std":
+                        value = group_slice.std()
+                    elif stat == "var":
+                        value = group_slice.var()
                     elif stat == "median":
                         value = np.median(group_slice)
                     elif stat == "min":
@@ -1093,7 +1099,7 @@ class Vapc:
     def compute_geometric_features(self):
         """
         Computes geometric features for all occupied voxels.
-
+        http://dx.doi.org/10.1109/CVPR.2016.178
         Notes
         -----
         - Adds various geometric feature columns to `self.df`, such as 'Sum_of_Eigenvalues',
