@@ -1103,7 +1103,7 @@ class Vapc:
         Notes
         -----
         - Adds various geometric feature columns to `self.df`, such as 'Sum_of_Eigenvalues',
-        'Omnivariance', 'Eigentropy', 'Anisotropy', 'Planarity', 'Linearity',
+        'Omnivariance', 'Eigenentropy', 'Anisotropy', 'Planarity', 'Linearity',
         'Surface_Variation', and 'Sphericity'.
         """
         def safe_log(x):
@@ -1127,13 +1127,13 @@ class Vapc:
         ) ** (1 / 3)
         try:
             # Now compute entropy using the normalized probabilities
-            self.df["Eigentropy"] = - (
+            self.df["Eigenentropy"] = - (
                 self.df["Eigenvalue_1_n"] * safe_log(self.df["Eigenvalue_1_n"])
                 + self.df["Eigenvalue_2_n"] * safe_log(self.df["Eigenvalue_2_n"])
                 + self.df["Eigenvalue_3_n"] * safe_log(self.df["Eigenvalue_3_n"])
             )
         except:
-            self.df["Eigentropy"] = np.nan
+            self.df["Eigenentropy"] = np.nan
         self.df.drop(["Eigenvalue_1_n", "Eigenvalue_2_n","Eigenvalue_3_n"], axis=1)
         self.df["Anisotropy"] = (
             self.df["Eigenvalue_1"] - self.df["Eigenvalue_3"]
