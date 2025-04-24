@@ -67,6 +67,16 @@ Exemplary [Jupyter Notebooks](./jupyter) are available.
 * Voxel based change detection
 * [Hierarchical change analysis](https://doi.org/10.5445/IR/1000180377) (using [VAPC](https://github.com/3dgeo-heidelberg/vapc) and [py4dgeo](https://github.com/3dgeo-heidelberg/py4dgeo)) 
 
+## 🎮 Examples
+
+### Demo notebooks using methods provided by VAPC
+|                                                                                                                                                              |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Example 1: Voxelisation of point clouds <br> <a href="https://github.com/3dgeo-heidelberg/vapc/blob/subsample/jupyter/tool_voxelize_point_cloud.ipynb"><img src="img/tree_voxelized.gif" width=500></a> |
+<!--
+| [![Example #](img/...)](link)          |
+-->
+
 ## Command line `VAPC`
 Using VAPC from the command line with config files is explained in the [how to command line](how_to_command_line.md). 
 
