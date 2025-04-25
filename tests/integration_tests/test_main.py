@@ -82,7 +82,7 @@ def get_expected_las_fields(vapc_command):
         attributes += [
             "Sum_of_Eigenvalues",
             "Omnivariance",
-            "Eigentropy",
+            "Eigenentropy",
             "Anisotropy",
             "Planarity",
             "Linearity",
