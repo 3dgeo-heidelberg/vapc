@@ -76,7 +76,9 @@ class DataHandler:
                     map(self.attributes.remove, ["X", "Y", "Z"])
                 )  # remove XYZ as xyz should be read directly to not scale and shift the points in an extra step.
                 # using vls data one has to remove the ExtraBytes dim
-                if "HELIOS++" in self.las_header.generating_software:
+                # if "HELIOS++" in self.las_header.generating_software:
+                #     self.attributes.remove("ExtraBytes")
+                if "ExtraBytes" in self.attributes:
                     self.attributes.remove("ExtraBytes")
                 df = pd.DataFrame(
                     data=np.array(

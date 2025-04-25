@@ -309,6 +309,8 @@ class Vapc:
 
         The available statistics are:
             - "mean"
+            - "std"
+            - "var"
             - "median"
             - "mode"
             - "min"
@@ -390,6 +392,10 @@ class Vapc:
                     group_slice = sorted_data[attr][start_idx:end_idx]
                     if stat == "mean":
                         value = group_slice.mean()
+                    elif stat == "std":
+                        value = group_slice.std()
+                    elif stat == "var":
+                        value = group_slice.var()
                     elif stat == "median":
                         value = np.median(group_slice)
                     elif stat == "min":
@@ -488,57 +494,46 @@ class Vapc:
     @timeit
     def compute_voxel_buffer(self, buffer_size: int = 1):
         """
-        Computes a buffer around each voxel by expanding voxel coordinates within a specified buffer size.
-
-        This method generates new voxel coordinates that are within the buffer distance from the original voxels.
-        The buffer includes all neighboring voxels within the given buffer size in all three dimensions.
-
-        Parameters
-        ----------
-        buffer_size : int, optional
-            The size of the buffer around each voxel. Defaults to 1.
-
-        Updates
-        -------
-        self.buffer_df : pandas.DataFrame
-            A DataFrame containing the expanded voxel coordinates with columns ['voxel_x', 'voxel_y', 'voxel_z'].
-
-        Notes
-        -----
-        - The original DataFrame `self.df` remains unchanged.
-        - This method sets `self.voxelized` to True if voxelization is performed.
+        Computes a buffer around each voxel by expanding voxel coordinates 
+        within a specified buffer size, overwrites self.df with that mask,
+        and returns it so you can immediately call select_by_mask().
         """
 
-        # Ensure the data is voxelized
+        # 1) Ensure points have voxel coords
         if not self.voxelized:
             self.voxelize()
 
-        if not self.voxel_index:
-            self.compute_voxel_index()
+        # 2) Pull unique voxel coords from the columns
+        coords = (
+            self.df[["voxel_x", "voxel_y", "voxel_z"]]
+            .drop_duplicates()
+            .to_numpy(dtype=int)
+        )  # shape = (n_voxels, 3)
 
-        # Get unique voxel coordinates
-        coords = np.array(self.df.index.unique().tolist())
+        # 3) Build the offset grid
+        offsets = np.arange(-buffer_size, buffer_size + 1, dtype=int)
+        grid = (
+            np.stack(np.meshgrid(offsets, offsets, offsets, indexing="ij"), axis=-1)
+            .reshape(-1, 3)
+        )  # shape = (n_offsets, 3)
 
-        # Generate offset combinations
-        offsets = np.arange(-buffer_size, buffer_size + 1)
-        all_combinations = np.array(np.meshgrid(offsets, offsets, offsets)).T.reshape(
-            -1, 3
-        )
+        # 4) Apply every offset to every voxel
+        expanded = (coords[:, None, :] + grid[None, :, :]).reshape(-1, 3)
 
-        # Expand coordinates by adding offsets
-        expanded_coords = (
-            coords[:, np.newaxis, :] + all_combinations
-        )  # Shape: (num_voxels, num_offsets, 3)
-        result = expanded_coords.reshape(
-            -1, 3
-        )  # Flatten to (num_voxels * num_offsets, 3)
+        # 5) Deduplicate into a DataFrame
+        buf = pd.DataFrame(expanded, columns=["voxel_x", "voxel_y", "voxel_z"])
+        buf = buf.drop_duplicates().reset_index(drop=True)
 
-        # Remove duplicate coordinates
-        result_df = pd.DataFrame(result, columns=["voxel_x", "voxel_y", "voxel_z"]).drop_duplicates()
-
-        # Store the buffer coordinates in a new attribute
-        self.buffer_df = result_df.reset_index(drop=True)
-
+        # ——— now overwrite self.df with the buffered‐voxel mask ———
+        self.df = buf
+        self.voxelized = True
+        self.voxel_index = False   # force recompute
+        # build the MultiIndex so select_by_mask can do df.index.isin(...)
+        self.compute_voxel_index()  # sets self.df.index to (voxel_x,voxel_y,voxel_z)
+        self.buffer_df =self.df
+        
+        return self.df
+    
     @trace
     @timeit
     def select_by_mask(
@@ -1093,11 +1088,11 @@ class Vapc:
     def compute_geometric_features(self):
         """
         Computes geometric features for all occupied voxels.
-
+        http://dx.doi.org/10.1109/CVPR.2016.178
         Notes
         -----
         - Adds various geometric feature columns to `self.df`, such as 'Sum_of_Eigenvalues',
-        'Omnivariance', 'Eigentropy', 'Anisotropy', 'Planarity', 'Linearity',
+        'Omnivariance', 'Eigenentropy', 'Anisotropy', 'Planarity', 'Linearity',
         'Surface_Variation', and 'Sphericity'.
         """
         def safe_log(x):
@@ -1121,13 +1116,13 @@ class Vapc:
         ) ** (1 / 3)
         try:
             # Now compute entropy using the normalized probabilities
-            self.df["Eigentropy"] = - (
+            self.df["Eigenentropy"] = - (
                 self.df["Eigenvalue_1_n"] * safe_log(self.df["Eigenvalue_1_n"])
                 + self.df["Eigenvalue_2_n"] * safe_log(self.df["Eigenvalue_2_n"])
                 + self.df["Eigenvalue_3_n"] * safe_log(self.df["Eigenvalue_3_n"])
             )
         except:
-            self.df["Eigentropy"] = np.nan
+            self.df["Eigenentropy"] = np.nan
         self.df.drop(["Eigenvalue_1_n", "Eigenvalue_2_n","Eigenvalue_3_n"], axis=1)
         self.df["Anisotropy"] = (
             self.df["Eigenvalue_1"] - self.df["Eigenvalue_3"]
