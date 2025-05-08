@@ -6,9 +6,10 @@
   vapc
   <br>
 </h1> -->
+<h1 align="center"><img src="img/vapc_logo.png" width=250></h4>
 <h1 align="center"><strong>V</strong>oxel <strong>A</strong>nalysis for <strong>P</strong>oint <strong>C</strong>louds</h4>
 
-`vapc` is a `Python` library for voxel-based point cloud operations.
+`VAPC` is a `Python` library for voxel-based point cloud operations.
 
 3D/4D point clouds are used in many fields and applications. Efficient processing of dense time series of point clouds or large study sites requires tools for automatic analysis. Moreover, methods considering the full 4D (3D space + time) data are being developed in research and need to be made available in an accessible way with flexible integration into existing workflows.
 
