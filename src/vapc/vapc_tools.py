@@ -643,7 +643,11 @@ def extract_areas_with_change_using_mahalanobis_distance(point_cloud_1_path, poi
     # type is 1 (mahalanobis significant), 2 (less than 30 points in voxel), 3 (disappearing), 
     # and 4 (appearing) are kept.
     bi_vapc.df = bi_vapc.df[(bi_vapc.df["change_type"] >= 1)]
-    bi_vapc.save_to_las(mask_file)
+    if bi_vapc.df.shape[0] == 0:
+        print("No change detected in the area")
+        return False
+    else:
+        bi_vapc.save_to_las(mask_file)
 
     # Clip area from T1 and T2
     extract_point_cloud_by_3D_mask_and_label(point_cloud_1_path, mask_file, point_cloud_out_1_path, voxel_size)
@@ -652,5 +656,5 @@ def extract_areas_with_change_using_mahalanobis_distance(point_cloud_1_path, poi
     # extract_point_cloud_by_3D_mask(point_cloud_1_path, mask_file, point_cloud_out_1_path, voxel_size)
     # extract_point_cloud_by_3D_mask(point_cloud_2_path, mask_file, point_cloud_out_2_path, voxel_size)
 
-    if delete_mask_file:
-        os.remove(mask_file)
+    # if delete_mask_file:
+    #     os.remove(mask_file)
