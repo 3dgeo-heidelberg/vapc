@@ -530,7 +530,13 @@ class Vapc:
         self.voxel_index = False   # force recompute
         # build the MultiIndex so select_by_mask can do df.index.isin(...)
         self.compute_voxel_index()  # sets self.df.index to (voxel_x,voxel_y,voxel_z)
-        self.buffer_df =self.df
+
+        # Adding the voxel 
+        self.df['Y'] = (self.df['voxel_y']+self.voxel_size/2)*self.voxel_size
+        self.df['Z'] = (self.df['voxel_z']+self.voxel_size/2)*self.voxel_size
+        self.df['X'] = (self.df['voxel_x']+self.voxel_size/2)*self.voxel_size
+
+        self.buffer_df = self.df
         
         return self.df
     

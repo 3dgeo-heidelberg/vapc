@@ -71,7 +71,7 @@ class DataHandler:
             with laspy.open(filepath) as lf:
                 las = lf.read()
                 self.las_header = las.header
-                self.attributes = list(las.points.array.dtype.names)
+                self.attributes = list(las.point_format.dimension_names)
                 list(
                     map(self.attributes.remove, ["X", "Y", "Z"])
                 )  # remove XYZ as xyz should be read directly to not scale and shift the points in an extra step.
@@ -152,13 +152,13 @@ class DataHandler:
                 pass  # 'ExtraBytes' dimension does not exist
         # Add other attributes to output:
         for name in self.df.columns:
-            if name not in ["X", "Y", "Z"]:
+            if name not in ["X", "Y", "Z", "scanner_channel", "overlap"]: # Not adding scanner_channel and overlap to laz files
                 try:
-                    self.las_file[name] = self.df[name]
+                    self.las_file[name] = self.df[name].astype(np.float32)
+                except TypeError:
+                    self.las_file[name] = self.df[name].astype(np.int16)
                 except ValueError:
                     self._add_dimension_to_laz(self.df[name].astype(np.float32), name)
-                    # print(f"Adding new dimension {name}")
-
         if not os.path.exists(Path(outfile).parent):
             os.makedirs(Path(outfile).parent)
 
