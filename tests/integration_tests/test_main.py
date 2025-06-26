@@ -293,7 +293,7 @@ def test_do_vapc_on_one_file(test_file_2, tmp_path, voxel_size, vapc_command, ti
     elif save_as == ".ply":
         plydata = plyfile.PlyData.read(outfile)
         #List of properties we can ignore
-        properties_to_ignore = ['x', 'y', 'z', 'intensity', 'bit_fields', 'classification_flags', 'classification', 'user_data', 'scan_angle', 'point_source_id', 'gps_time', 'red', 'green', 'blue', 'echo_width', 'fullwaveIndex', 'hitObjectId', 'heliosAmplitude']
+        properties_to_ignore = ['x', 'y', 'z', 'intensity', 'bit_fields', 'classification_flags', 'classification', 'user_data', 'scan_angle', 'point_source_id', 'gps_time', 'red', 'green', 'blue', 'echo_width', 'fullwaveIndex', 'hitObjectId', 'heliosAmplitude','return_number', 'number_of_returns', 'synthetic', 'key_point', 'withheld', 'overlap', 'scanner_channel', 'scan_direction_flag', 'edge_of_flight_line',]
         properties = [p.name for p in plydata.elements[0].properties if p.name not in properties_to_ignore]
         print(properties)
         print(attributes)
