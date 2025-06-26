@@ -92,5 +92,5 @@ A small test dataset is currently provided in [test data](./tests/test_data).
 See [LICENSE](LICENSE).
 
 # 
-> [Homepage](https://www.geog.uni-heidelberg.de/3dgeo/index.html) &nbsp;&middot;&nbsp; E-Mail [ronald.tabernig@uni-heidelberg.de](ronald.tabernig@uni-heidelberg.de)
+> [Homepage](https://www.geog.uni-heidelberg.de/en/3dgeo) &nbsp;&middot;&nbsp; E-Mail [ronald.tabernig@uni-heidelberg.de](ronald.tabernig@uni-heidelberg.de)
 
