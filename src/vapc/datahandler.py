@@ -152,14 +152,13 @@ class DataHandler:
                 pass  # 'ExtraBytes' dimension does not exist
         # Add other attributes to output:
         for name in self.df.columns:
-            if name not in ["X", "Y", "Z"]:
+            if name not in ["X", "Y", "Z", "scanner_channel", "overlap"]: # Not adding scanner_channel and overlap to laz files
                 try:
-                    self.las_file[name] = self.df[name].astype(float)
+                    self.las_file[name] = self.df[name].astype(np.float32)
+                except TypeError:
+                    self.las_file[name] = self.df[name].astype(np.int16)
                 except ValueError:
                     self._add_dimension_to_laz(self.df[name].astype(np.float32), name)
-                except TypeError:
-                        self.las_file[name] = self.df[name].astype(int)
-
         if not os.path.exists(Path(outfile).parent):
             os.makedirs(Path(outfile).parent)
 
