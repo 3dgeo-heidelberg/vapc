@@ -69,12 +69,12 @@ def test_load_las_single_file(test_file_path_1, to_string):
         test_file_path_1 = str(test_file_path_1)
     dh = vapc.DataHandler(test_file_path_1)
     # expected
-    shape = (547662, 12)
+    shape = (547662, 18)
     # assertions
     dh.load_las_files()
     assert dh.df is not None
     assert dh.df.shape == shape
-    assert dh.attributes == ['intensity', 'bit_fields', 'raw_classification', 'scan_angle_rank', 'user_data', 'point_source_id', 'red', 'green', 'blue']
+    assert dh.attributes == ['intensity', 'return_number', 'number_of_returns', 'scan_direction_flag', 'edge_of_flight_line', 'classification', 'synthetic', 'key_point', 'withheld', 'scan_angle_rank', 'user_data', 'point_source_id', 'red', 'green', 'blue']
     assert dh.las_header is not None
     assert dh.df.columns.isin(['X', 'Y', 'Z']).any()
 
@@ -85,12 +85,12 @@ def test_load_las_vls_file(test_file_path_vls):
     """
     dh = vapc.DataHandler(test_file_path_vls)
     # expected
-    shape = (61283, 15)
+    shape = (61283, 22)
     # assertions
     dh.load_las_files()
     assert dh.df is not None
     assert dh.df.shape == shape
-    assert dh.attributes == ['intensity', 'bit_fields', 'classification_flags', 'classification', 'user_data', 'scan_angle', 'point_source_id', 'gps_time', 'echo_width', 'fullwaveIndex', 'hitObjectId', 'heliosAmplitude']
+    assert dh.attributes == ['intensity', 'return_number', 'number_of_returns', 'synthetic', 'key_point', 'withheld', 'overlap', 'scanner_channel', 'scan_direction_flag', 'edge_of_flight_line', 'classification', 'user_data', 'scan_angle', 'point_source_id', 'gps_time', 'echo_width', 'fullwaveIndex', 'hitObjectId', 'heliosAmplitude']
     assert dh.las_header is not None
     assert dh.df.columns.isin(['X', 'Y', 'Z']).any()
 
@@ -102,17 +102,15 @@ def test_load_las_multiple_files(test_file_path_1, test_file_path_2):
     dh = vapc.DataHandler([test_file_path_1, test_file_path_2])
     dh.load_las_files()
     # expected
-    shape = (547662 + 151, 12)
+    shape = (547662 + 3065, 18)
     # assertions
     assert dh.df is not None
     assert dh.df.shape == shape
-    assert dh.attributes == ['intensity',
-                             'bit_fields',
-                             'raw_classification',
-                             'scan_angle_rank',
-                             'user_data',
-                             'point_source_id',
-                             'red', 'green', 'blue']
+    assert dh.attributes == ['intensity', 'return_number', 'number_of_returns', 
+                            'scan_direction_flag', 'edge_of_flight_line', 'classification', 
+                            'synthetic', 'key_point', 'withheld', 
+                            'scan_angle_rank', 'user_data', 'point_source_id', 
+                            'red', 'green', 'blue']
     assert dh.las_header is not None
     assert dh.df.columns.isin(['X', 'Y', 'Z']).any()
 
@@ -202,7 +200,7 @@ def test_write_ply_file(tmp_path, voxel_grid_laz_factory, test_file_path_2, data
     assert plydata.elements[1].data.shape[0] == dh.df.shape[0] * 6 * 2
     # assert properties
     properties = [p.name for p in plydata.elements[0].properties]
-    assert len(properties) == 19
+    assert len(properties) == 25
     assert set(["x", "y", "z", "red", "green", "blue", "intensity", "classification", "point_source_id"]) <= set(properties)
     # assert colours within 0 - 255
     for col in ["red", "green", "blue"]:
