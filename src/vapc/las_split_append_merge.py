@@ -46,7 +46,7 @@ def las_create_or_append(fh, las, mask, tile_name):
     return True
 
 
-def las_merge(filepaths, outfile):
+def las_merge(filepaths, outfile, point_source_id=False):
     """
     Merges multiple LAS files into a single output file.
 
@@ -64,19 +64,25 @@ def las_merge(filepaths, outfile):
                 print("Empty file, skipping...")
                 continue
             else:
+                if point_source_id:
+                    las['point_source_id'] = np.full(len(las.points), i, dtype=las['point_source_id'].dtype)
                 las.write(outfile)
+                ii = i+1
                 #print(f"Created {outfile}. Merging now...")
                 break
     with laspy.open(outfile, "a") as lf:
         scales = lf.header.scales
         offsets = lf.header.offsets
-        for file in filepaths[1:]:
+        for file in filepaths[ii:]:
             with laspy.open(file) as lf_a:
                 lf_aa = lf_a.read()
                 lf_aa.X = (lf_aa.x - offsets[0]) / scales[0]
                 lf_aa.Y = (lf_aa.y - offsets[1]) / scales[1]
                 lf_aa.Z = (lf_aa.z - offsets[2]) / scales[2]
+                if point_source_id:
+                    lf_aa['point_source_id'] = np.full(len(lf_aa.points), ii, dtype=lf_aa['point_source_id'].dtype)
                 lf.append_points(lf_aa.points)
+                ii+=1
     return True
 
 
