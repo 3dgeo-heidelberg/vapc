@@ -560,6 +560,11 @@ class Vapc:
         segment_in_or_out : str, optional
             Determines whether to keep ("in") or remove ("out") the overlapping points.
             Must be either "in" or "out". Defaults to "in".
+        
+        Returns
+        -------
+        mask : pd.Series
+            A boolean mask indicating which points were kept or removed based on the filtering.
 
         Raises
         ------
@@ -593,13 +598,15 @@ class Vapc:
 
         mask_values = vapc_mask.df.index
         if segment_in_or_out == "in":
-            self.df = self.df.loc[self.df.index.isin(mask_values)]
+            mask = self.df.index.isin(mask_values)
         elif segment_in_or_out == "out":
-            self.df = self.df.loc[~self.df.index.isin(mask_values)]
+            mask = ~self.df.index.isin(mask_values)
         else:
             raise ValueError(
                 "Parameter 'segment_in_or_out' must be either 'in' or 'out'."
             )
+
+        self.df = self.df.loc[mask]
 
         for attr in ["voxel_x", "voxel_y", "voxel_z"]:
             try:
@@ -607,6 +614,8 @@ class Vapc:
             except:
                 pass
         self.voxelized = False
+
+        return mask
 
     
     @trace
